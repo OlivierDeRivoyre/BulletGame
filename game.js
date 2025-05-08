@@ -1,10 +1,14 @@
-const CanvasWidth = 800;
-const CanvasHeight = 450;
-const canvas = document.getElementById("myCanvas");
+const CanvasWidth = 32 * 16;//512
+const CanvasHeight = 32 * 9;//288
+const canvas = document.createElement("canvas");
+canvas.width = CanvasWidth;
+canvas.height = CanvasHeight;
 const ctx = canvas.getContext("2d");
+
 
 window.addEventListener('keydown', keydown, false);
 window.addEventListener('keyup', keyup, false);
+
 
 let keysPressed = {
     left: false,
@@ -29,6 +33,10 @@ function keydown(event) {
 function keyup(event) {
     keyPressed(false, event);
 }
+
+
+
+
 
 const params = new URLSearchParams(window.location.search);
 const server = params.get("server");
@@ -95,7 +103,7 @@ async function initPeer() {
         firstOpen = false;
     });
 }
-initPeer();
+
 
 
 
@@ -105,6 +113,7 @@ class Server {
         this.connections = [];
         const serverPlayer = new Player(0);
         this.world = new World(true, [serverPlayer], serverPlayer.id);
+        screen.currentView = this.world;
         this.tickCount = 0;
     }
     onConnect(conn) {
@@ -165,7 +174,7 @@ class Server {
         if (updates.length != 0) {
             this.broadcastAll({ t: 'updates', updates });
         }
-        this.world.paint();
+        screen.paint();
         setTimeout(() => this.runTick(), Server.tickDuration);
     }
     broadcastAll(msg) {
@@ -221,17 +230,65 @@ class Client {
             if (updates.length != 0) {
                 this.connection.send({ t: 'updates', updates });
             }
-            this.world.paint();
+            screen.paint();
         }
         setTimeout(() => this.runTick(), Server.tickDuration);
     }
     onData(msg) {
         if (msg.t == 'newWorld') {
             this.world = World.newWorld(msg);
+            screen.currentView = this.world;
         }
         if (msg.t == 'updates' && this.world != null) {
             this.world.onUpdates(msg.updates);
         }
+    }
+}
+
+function loadImg(name) {
+    const img = new Image();
+    img.src = "img/" + name + ".png";
+    return img;
+}
+const dungeonTileSet = loadImg("0x72_DungeonTilesetII_v1.7");
+
+function getDungeonTileSetHeroSprite(j) {
+    const x = 128;
+    const y = j * 32;
+    const topMargin = 8;
+    return new DoubleSprite(dungeonTileSet, x, y + topMargin, 16, 32 - topMargin);
+}
+class DoubleSprite {
+    constructor(tile, tx, ty, tWidth, tHeight) {
+        this.tile = tile;
+        this.tx = tx;
+        this.ty = ty;
+        this.tWidth = tWidth;
+        this.tHeight = tHeight;
+    }
+    paint(x, y, index, reverse) {
+        index |= 0;
+        if (reverse) {
+            this.paint32Reverse(x, y, index);
+            return;
+        }
+        ctx.drawImage(this.tile,
+            this.tx + index * this.tWidth, this.ty,
+            this.tWidth, this.tHeight,
+            x, y,
+            this.tWidth, this.tHeight
+        );
+    }
+    paintReverse(x, y, index) {
+        ctx.save();
+        ctx.translate(x + this.tWidth, y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(this.tile,
+            this.tx + index * this.tWidth, this.ty,
+            this.tWidth, this.tHeight,
+            0, 0, this.tWidth, this.tHeight
+        );
+        ctx.restore();
     }
 }
 
@@ -251,7 +308,7 @@ class Player {
         this.radius = 40;
         this.inputX = 0;
         this.inputY = 0;
-
+        this.sprite = getDungeonTileSetHeroSprite(0);
     }
     updateLocalPlayer() {
         let changed = false;
@@ -298,6 +355,8 @@ class Player {
         ctx.arc(this.x, this.y, this.radius, 2 * Math.PI, 0);
         ctx.fillStyle = this.color;
         ctx.fill();
+
+        this.sprite.paint(this.x + 100, this.y, 0, false);
     }
     getMsg() {
         return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
@@ -320,12 +379,11 @@ class World {
     constructor(isServer, players, localPlayerId) {
         this.isServer = isServer;
         this.players = players;
-
+        this.mouse = null;
         this.localPlayer = players.find(p => p.id == localPlayerId);
         if (!this.localPlayer) {
             throw new Error(`Player not found ${localPlayerId}`);
         }
-
     }
     update() {
         const changed = this.localPlayer.updateLocalPlayer();
@@ -341,9 +399,13 @@ class World {
         for (let p of this.players) {
             p.paint();
         }
-
+        if (this.mouse) {
+            ctx.beginPath();
+            ctx.arc(this.mouse.x, this.mouse.y, 2, 2 * Math.PI, 0);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+        }
     }
-
     getNewWorldMsg() {
         return {
             t: 'newWorld',
@@ -372,4 +434,80 @@ class World {
             }
         }
     }
+    mouseMove(mouse) {
+        this.mouse = mouse;
+    }
+    mouseDown(mouse) {
+
+    }
 }
+
+class Screen {
+    constructor() {
+        this.screenCanvas = document.getElementById("myCanvas");
+        this.screenCtx = this.screenCanvas.getContext("2d");
+        this.currentView = null;
+        this.windowResize();
+        window.addEventListener('resize', () => this.windowResize(), false);
+        window.addEventListener('mousemove', (e) => this.mouseMove(e), false);
+        window.addEventListener('mousedown', (e) => this.mouseDown(e), false);
+    }
+    paint() {
+        if (this.currentView) {
+            this.currentView.paint();
+        }
+        this.screenCtx.imageSmoothingEnabled = false;
+        this.screenCtx.clearRect(0, 0, this.screenCanvas.width, this.screenCanvas.height);
+        this.screenCtx.drawImage(canvas,
+            0, 0, canvas.width, canvas.height,
+            0, 0, this.screenCanvas.width, this.screenCanvas.height)
+    }
+    toCanvasCoord(x, y) {
+        return {
+            x: Math.floor(x * canvas.width / this.screenCanvas.width),
+            y: Math.floor(y * canvas.height / this.screenCanvas.height)
+        };
+    }
+    mouseMove(event) {
+        if (!this.currentView) {
+            return;
+        }
+        this.currentView.mouseMove(this.toCanvasCoord(event.offsetX, event.offsetY));
+    }
+    mouseDown(event) {
+        if (!this.currentView) {
+            return;
+        }
+        this.currentView.mouseDown(this.toCanvasCoord(event.offsetX, event.offsetY));
+    }
+    windowResize() {
+        if (document.fullscreenElement) {
+            this.screenCanvas.width = window.innerWidth;
+            this.screenCanvas.height = window.innerHeight;
+        } else {
+            let w = window.innerWidth - 40;
+            let h = window.innerHeight - 180;
+            if (h * 16 > w * 9) {
+                h = Math.floor(w * 9 / 16);
+            } else {
+                w = Math.floor(h * 16 / 9);
+            }
+            this.screenCanvas.width = w;
+            this.screenCanvas.height = h;
+        }
+    }
+    fullScreen() {
+        if (this.screenCanvas.webkitRequestFullScreen) {
+            this.screenCanvas.webkitRequestFullScreen();
+        }
+        else {
+            this.screenCanvas.mozRequestFullScreen();
+        }
+    }
+}
+const screen = new Screen();
+initPeer();
+function fullScreen() {
+    screen.fullScreen();
+}
+

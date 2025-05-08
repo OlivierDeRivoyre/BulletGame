@@ -8,12 +8,15 @@
         margin-right: auto;
         border: 3px solid green;
         display: block;
+        cursor: none;
     }
 </style>
 
 <body>
-    <canvas id="myCanvas" width="800" height="450" class="board"></canvas>
+    <canvas id="myCanvas" class="board"></canvas>
     <div id="myId"></div>    
+    <br/>
+    <button onclick="fullScreen()">Full Screen</button>
 </body>
 <script src="lib/peerjs.min.js"></script>
 <script src="lib/crypto-aes-gcm.js"></script>
