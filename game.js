@@ -469,7 +469,7 @@ class ActionBar {
         this.spells[1] = allSpells.curseGround;
         this.spells[2] = allSpells.rootingProjectile;
         this.spells[3] = allSpells.healProjectile;
-        this.spells[4] = allSpells.noSpell;
+        this.spells[4] = allSpells.protectSpell;
         this.topX = 400;
         this.topY = CanvasHeight - 38;
         this.shortcuts = ['M2', 'Q', 'E', 'R', 'F'];

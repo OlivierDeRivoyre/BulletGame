@@ -133,7 +133,7 @@ class ProjectileAnim {
         return false;
     }
     paint(camera) {
-        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this);
+        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this, camera);
     }
 }
 
@@ -151,7 +151,7 @@ class DurationAnim {
         return this.tick < this.maxTick;
     }
     paint(camera) {
-        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this);
+        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this, camera);
     }
 }
 class NoSpell {
@@ -233,6 +233,27 @@ class ZoneSpell {
         return true;
     }
 }
+class ProtectSpell {
+    constructor() {
+        this.sprite = getRavenSprite(2, 113);;
+        this.castingTime = 0;
+        this.cooldown = 20;
+        this.duration = 1.5;
+        this.zIndex = -10;
+    }
+    trigger(player, mouseCoord, world) {
+        const anim = new DurationAnim(this, this.duration, player.getCenterCoord());
+        anim.player = player;
+        world.addProjectile(anim, player);
+        return true;
+    }
+    paint(x, y, anim, camera) {
+        const coord = anim.player.getCenterCoord();
+        const size = 64;
+        this.sprite.paintScale(camera.toCanvasX(coord.x) - size / 2, camera.toCanvasY(coord.y) - size / 2,
+            size, size);
+    }
+}
 
 class AllSpells {
 
@@ -243,6 +264,7 @@ class AllSpells {
         this.curseGround = AllSpells.curseGround();
         this.rootingProjectile = AllSpells.rootingProjectile();
         this.healProjectile = AllSpells.healProjectile();
+        this.protectSpell = AllSpells.protectSpell();
     }
     static noSpell() {
         return new NoSpell();
@@ -275,6 +297,9 @@ class AllSpells {
             world.addProjectile(anim, player);
         }
         return rootingProjectile;
+    }
+    static protectSpell() {
+        return new ProtectSpell();
     }
 }
 const allSpells = new AllSpells();
