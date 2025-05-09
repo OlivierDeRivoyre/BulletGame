@@ -317,6 +317,15 @@ class SimpleSprite {
             x, y, w, h
         );
     }
+    paintRotate(x, y, w, h, angus) {
+        ctx.save();
+        ctx.translate(x + this.tWidth / 2, y + this.tHeight / 2);
+        ctx.rotate(angus);
+        ctx.drawImage(this.tile,
+            this.tx, this.ty, this.tWidth, this.tHeight,
+            -w / 2, -h / 2, w, h);
+        ctx.restore();
+    }
 }
 class DoubleSprite {
     constructor(tile, tx, ty, tWidth, tHeight) {
@@ -463,26 +472,34 @@ class ActionBar {
         this.spells[4] = allSpells.noSpell;
         this.topX = 400;
         this.topY = CanvasHeight - 38;
-        this.shortcuts = ['M2', 'Q', 'R', 'T', 'F'];
+        this.shortcuts = ['M2', 'Q', 'E', 'R', 'F'];
+    }
+    tryTrigger(spell, world) {
+        if (spell.lastAttackTick && world.tick < spell.lastAttackTick + spell.cooldown * 30) {
+            return;
+        }
+        if (spell.trigger(this.player, world.camera.toWorldCoord(input.mouse), world)) {
+            spell.lastAttackTick = world.tick;
+        }
     }
     update(input, world) {
         if (input.mouseClicked) {
-            this.basicAttack.tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+            this.tryTrigger(this.basicAttack, world);
         }
         else if (input.mouse2Clicked) {
-            this.spells[0].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+            this.tryTrigger(this.spells[0], world);
         }
         else if (input.keysPressed.s1) {
-            this.spells[1].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+            this.tryTrigger(this.spells[1], world);
         }
         else if (input.keysPressed.s2) {
-            this.spells[2].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+            this.tryTrigger(this.spells[2], world);
         }
         else if (input.keysPressed.s3) {
-            this.spells[3].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+            this.tryTrigger(this.spells[3], world);
         }
         else if (input.keysPressed.s4) {
-            this.spells[4].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+            this.tryTrigger(this.spells[4], world);
         }
     }
     paint() {
@@ -630,7 +647,7 @@ class World {
         this.dangerousProjectiles = [];
         this.tick = 0;
     }
-    addProjectile(anim, from){
+    addProjectile(anim, from) {
         this.friendlyProjectiles.push(anim);
         this.friendlyProjectiles.sort((a, b) => a.zIndex - b.zIndex);
     }

@@ -35,8 +35,9 @@ class BulletProjectile {
 }
 class RootingProjectile {
     constructor() {
-        this.sprite = getRavenSprite(0, 24);
-        this.speed = 8;
+        this.sprite = getRavenSprite(1, 48);
+        this.spriteCorrectAngus = -0.75 * Math.PI;
+            this.speed = 8;
         this.range = 5;
         this.radius = 12;
         this.zIndex = 20;
@@ -44,15 +45,16 @@ class RootingProjectile {
     onHit(mob) {
         return false;
     }
-    paint(x, y) {
-        this.sprite.paintScale(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius);
+    paint(x, y, angus) {
+        this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius,        
+            angus + this.spriteCorrectAngus);
     }
 }
 class CircleAreaProjectile {
     constructor() {
         this.color = '#85d';
         this.isFriendly = true;
-        this.radius = 64 * 1.5;
+        this.radius = 1.5;
         this.zIndex = -10;
     }
     onHit(mob) {
@@ -60,7 +62,7 @@ class CircleAreaProjectile {
     }
     paint(x, y) {
         ctx.beginPath();
-        ctx.arc(x, y, this.radius, 2 * Math.PI, 0);
+        ctx.arc(x, y, this.radius * 64, 2 * Math.PI, 0);
         ctx.fillStyle = this.color;
         ctx.fill();
     }
@@ -83,6 +85,7 @@ class ProjectileAnim {
         this.tick = 0;
         this.maxTick = 1 + range / speed;
         this.zIndex = this.projectile.zIndex || 10;
+        this.angus = Math.atan2(this.vy, this.vx);
     }
     update(world) {
         this.tick++;
@@ -91,14 +94,14 @@ class ProjectileAnim {
         return this.tick < this.maxTick;
     }
     paint(camera) {
-        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y));
+        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.angus);
     }
 }
 
 class DurationAnim {
-    constructor(projectile, tickCount, coord) {
+    constructor(projectile, duration, coord) {
         this.projectile = projectile;
-        this.maxTick = tickCount;
+        this.maxTick = duration * 30;
         this.x = coord.x;
         this.y = coord.y;
         this.tick = 0;
@@ -116,38 +119,31 @@ class NoSpell {
     constructor() {
         this.sprite = emptySprite;
     }
-    tryTrigger(player, mouseCoord, world) {
+    trigger(player, mouseCoord, world) {
     }
 }
 class ThrowProjectileSpell {
     constructor(projectile) {
         this.projectile = projectile;
-        this.attackPeriod = 10;
-        this.lastAttackTick = -9999;
+        this.castingTime = 0;
+        this.cooldown = 0.7;
         this.sprite = getRavenSprite(0, 93);
     }
-    tryTrigger(player, mouseCoord, world) {
-        if (world.tick < this.lastAttackTick + this.attackPeriod) {
-            return;
-        }
-        this.lastAttackTick = world.tick;
+    trigger(player, mouseCoord, world) {
         const anim = new ProjectileAnim(this.projectile, player.getCenterCoord(), mouseCoord);
         world.addProjectile(anim, player);
         sounds.lazer.play();
+        return true;
     }
 }
 class ShotgunAttack {
     constructor(projectile) {
         this.projectile = projectile;
-        this.attackPeriod = 30 * 5;
-        this.lastAttackTick = -9999;
+        this.castingTime = 0;
+        this.cooldown = 5;
         this.sprite = getRavenSprite(2, 62);
     }
-    tryTrigger(player, mouseCoord, world) {
-        if (world.tick < this.lastAttackTick + this.attackPeriod) {
-            return;
-        }
-        this.lastAttackTick = world.tick;
+    trigger(player, mouseCoord, world) {
         const from = player.getCenterCoord();
         const baseAngus = Math.atan2(mouseCoord.y - from.y, mouseCoord.x - from.x);
         for (let i = 1; i <= 5; i++) {
@@ -160,6 +156,7 @@ class ShotgunAttack {
             world.addProjectile(anim, player);
         }
         sounds.shotgun2b.play();
+        return true;
     }
 }
 class ZoneSpell {
@@ -177,21 +174,17 @@ class ZoneSpell {
     constructor(projectile) {
         this.projectile = projectile;
         this.sprite = getRavenSprite(4, 48);
-        this.attackPeriod = 60;
-        this.lastAttackTick = -9999;
-        this.range = 64 * 5;
-        this.radius = 64 * 5;
-        this.duration = 30 * 5;
+        this.castingTime = 0;
+        this.cooldown = 5;
+        this.range = 5;
+        this.radius = 5;
+        this.duration = 5;
     }
-    tryTrigger(player, mouseCoord, world) {
-        if (world.tick < this.lastAttackTick + this.attackPeriod) {
-            return;
-        }
-        this.lastAttackTick = world.tick;
-
-        const center = ZoneSpell.maxRangeCoord(player.getCenterCoord(), mouseCoord, this.range);
+    trigger(player, mouseCoord, world) {
+        const center = ZoneSpell.maxRangeCoord(player.getCenterCoord(), mouseCoord, this.range * 64);
         const anim = new DurationAnim(this.projectile, this.duration, center);
         world.addProjectile(anim, player);
+        return true;
     }
 }
 
