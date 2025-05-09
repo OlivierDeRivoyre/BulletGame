@@ -1,5 +1,7 @@
-const CanvasWidth = 32 * 16;//512
-const CanvasHeight = 32 * 9;//288
+const CanvasCellWidth = 16;
+const CanvasCellHeight = 9;
+const CanvasWidth = 32 * CanvasCellWidth;//512
+const CanvasHeight = 32 * CanvasCellHeight;//288
 const canvas = document.createElement("canvas");
 canvas.width = CanvasWidth;
 canvas.height = CanvasHeight;
@@ -262,6 +264,11 @@ function getDungeonTileSetHeroSprite(j) {
     const topMargin = 8;
     return new DoubleSprite(dungeonTileSet, x, y + topMargin, 16, 32 - topMargin);
 }
+function getDungeonTileSetVilainSprite(i) {
+    const x = 368;
+    const y = 9 + i * 24;
+    return new DoubleSprite(dungeonTileSet, x, y, 16, 24);
+}
 class DoubleSprite {
     constructor(tile, tx, ty, tWidth, tHeight) {
         this.tile = tile;
@@ -302,11 +309,10 @@ function square(x) {
 class Player {
     constructor(id) {
         this.id = id;
-        this.x = 200;
-        this.y = 200;
+        this.x = 32 * 5;
+        this.y = 32 * 5;
         this.vx = 0;
         this.vy = 0;
-        this.radius = 40;
         this.inputX = 0;
         this.inputY = 0;
         this.sprite = getDungeonTileSetHeroSprite(0);
@@ -372,8 +378,8 @@ class Player {
         this.y += this.vy;
     }
 
-    paint() {
-        this.sprite.paint(Math.floor(this.x), Math.floor(this.y), 0, false);
+    paint(topX, topY) {
+        this.sprite.paint(Math.floor(this.x - topX), Math.floor(this.y - topY), 0, false);
     }
     getMsg() {
         return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
@@ -390,6 +396,117 @@ class Player {
         }
     }
 }
+class AggroMobBrain {
+
+}
+class Mob {
+    constructor(sprite, brain, x, y) {
+        this.sprite = sprite;
+        this.brain = brain;
+        this.x = x;
+        this.y = y;
+        this.maxLife = 100;
+        this.life = 100;
+    }
+    update() {
+
+    }
+    paint(topX, topY) {
+        this.sprite.paint(Math.floor(this.x - topX), Math.floor(this.y - topY), 0, false);
+    }
+}
+class CellSprite {
+    constructor(sprite) {
+        if (sprite.toLowerCase) {
+            this.color = sprite;
+        } else {
+            this.sprite = sprite;
+        }
+    }
+    paint(x, y) {
+        if (this.color) {
+            ctx.beginPath();
+            ctx.lineWidth = 0;
+            ctx.fillStyle = this.color;
+            ctx.rect(x, y, 32, 32);
+            ctx.fill();
+        } else {
+            this.sprite.paint(x, y, 32, 32);
+        }
+    }
+}
+class CellSpriteFactory {
+    constructor() {
+        this.grass1 = new CellSprite('#509060');
+        this.grass2 = new CellSprite('#509360');
+        this.water = new CellSprite('#55B');
+    }
+}
+const cellSpriteFactory = new CellSpriteFactory();
+class Cell {
+    constructor(cellSprites) {
+        this.cellSprites = cellSprites;
+    }
+    paint(x, y) {
+        for (let s of this.cellSprites) {
+            s.paint(x, y);
+        }
+    }
+}
+
+class Map {
+    constructor() {
+        this.borderCell = new Cell([cellSpriteFactory.water]);
+        this.cells = new Array(10);
+        for (var j = 0; j < this.cells.length; j++) {
+            this.cells[j] = new Array(50);
+            for (var i = 0; i < this.cells[j].length; i++) {
+                const grass = (i + j) % 2 == 0 ? cellSpriteFactory.grass1 : cellSpriteFactory.grass2;
+                this.cells[j][i] = new Cell([grass]);
+            }
+        }
+    }
+    getCell(x, y) {
+        const i = Math.floor(x / 32);
+        const j = Math.floor(y / 32);
+        if (j < 0 || j >= this.cells.length) {
+            return this.borderCell;
+        }
+        const row = this.cells[j];
+        if (i < 0 || i >= row.length) {
+            return this.borderCell;
+        }
+        return row[i];
+    }
+    paint(topX, topY) {
+        const offsetX = Math.floor(topX / 32) * 32 - topX;
+        const offsetY = Math.floor(topY / 32) * 32 - topY;
+        for (let j = -1; j <= CanvasCellHeight; j++) {
+            for (let i = -1; i <= CanvasCellWidth; i++) {
+                const x = topX + i * 32;
+                const y = topY + j * 32;
+                this.getCell(x, y).paint(offsetX + i * 32, offsetY + j * 32);
+            }
+        }
+    }
+}
+
+class Level{
+    constructor(){
+        this.map = new Map();
+        this.mobs = [];
+        this.mobs.push(new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(), 10*32, 5 * 32));
+    }
+    update(){
+
+    }
+    paint(topX, topY) {
+        this.map.paint(topX, topY);
+        for(let mob of this.mobs){
+            mob.paint(topX, topY);
+        }
+    }
+}
 
 class World {
 
@@ -401,21 +518,26 @@ class World {
         if (!this.localPlayer) {
             throw new Error(`Player not found ${localPlayerId}`);
         }
+        this.level = new Level();
+        this.map = this.level.map;
     }
     update() {
         const changed = this.localPlayer.updateLocalPlayer();
         for (let p of this.players) {
             p.update();
         }
+        this.level.update();
         const updates = [];
 
         return updates;
     }
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.paintGround();
+        const topX = Math.floor(this.localPlayer.x - CanvasWidth / 2);
+        const topY = Math.floor(this.localPlayer.y - CanvasHeight / 2);
+        this.level.paint(topX, topY);
         for (let p of this.players) {
-            p.paint();
+            p.paint(topX, topY);
         }
         if (this.mouse) {
             ctx.beginPath();
