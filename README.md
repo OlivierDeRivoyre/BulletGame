@@ -18,3 +18,21 @@ Libs:
 Thanks:
 
 - metered.ca for WebRTC server
+
+Sounds:
+
+http://www.freesound.org/people/Goup_1/sounds/190613/
+http://www.freesound.org/people/Glaneur%20de%20sons/sounds/104946/
+http://www.freesound.org/people/peridactyloptrix/sounds/214990/
+http://www.freesound.org/people/Winamice/sounds/243358/
+http://www.freesound.org/people/qubodup/sounds/238955/
+http://www.freesound.org/people/spookymodem/sounds/249817/
+http://www.freesound.org/people/unfa/sounds/245646/
+http://www.freesound.org/people/warriorsfan12331/sounds/115294/
+http://www.freesound.org/people/smcameron/sounds/51464/
+http://www.freesound.org/people/oceanictrancer/sounds/183891/
+http://www.freesound.org/people/milton./sounds/99978/
+http://www.freesound.org/people/tambascot/sounds/203105/
+http://www.freesound.org/people/Kastenfrosch/sounds/162458/
+https://www.freesound.org/people/Superex1110/sounds/77535/
+https://www.freesound.org/people/MadamVicious/sounds/218185/

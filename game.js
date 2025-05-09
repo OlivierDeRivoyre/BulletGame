@@ -288,7 +288,7 @@ const dungeonTileSet = loadImg("0x72_DungeonTilesetII_v1.7");
 function getDungeonTileSetHeroSprite(j) {
     const x = 128;
     const y = j * 32;
-    const topMargin = 8;
+    const topMargin = 11;
     return new DoubleSprite(dungeonTileSet, x, y + topMargin, 16, 32 - topMargin);
 }
 function getDungeonTileSetVilainSprite(i) {
@@ -310,6 +310,7 @@ class DoubleSprite {
             this.paint32Reverse(x, y, index);
             return;
         }
+        // ctx.fillStyle = "pink"; ctx.fillRect(x, y, this.tWidth, this.tHeight);
         ctx.drawImage(this.tile,
             this.tx + index * this.tWidth, this.ty,
             this.tWidth, this.tHeight,
@@ -343,7 +344,11 @@ class Player {
         this.inputX = 0;
         this.inputY = 0;
         this.sprite = getDungeonTileSetHeroSprite(0);
-        this.primaryAttack = new PrimaryAttack();
+        this.primaryAttack = new BasicAttack();
+        this.secondaryAttack = new ShotgunAttack();
+    }
+    getCenterCoord() {
+        return { x: this.x + this.sprite.tWidth / 2, y: this.y + this.sprite.tHeight / 2 };
     }
     updateLocalPlayer(input, world) {
         let changed = false;
@@ -383,6 +388,9 @@ class Player {
         }
         if (input.mouseClicked) {
             this.primaryAttack.tryTrigger(this, world.camera.toWorldCoord(input.mouse), world);
+        }
+        if (input.mouse2Clicked) {
+            this.secondaryAttack.tryTrigger(this, world.camera.toWorldCoord(input.mouse), world);
         }
         return changed;
     }
@@ -540,7 +548,7 @@ class Level {
         }
     }
 }
-class PrimaryAttack {
+class BasicAttack {
     constructor() {
         this.projectile = new FriendlyProjectile();
         this.attackPeriod = 10;
@@ -551,26 +559,54 @@ class PrimaryAttack {
             return;
         }
         this.lastAttackTick = world.tick;
-        world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, player, mouseCoord, 32 * 5, 15));
+        world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, player.getCenterCoord(), mouseCoord, 32 * 5, 15));
+        sounds.lazer.play();
+    }
+}
+class ShotgunAttack {
+    constructor() {
+        this.projectile = new FriendlyProjectile();
+        this.projectile.color = '#44f';
+        this.attackPeriod = 20;
+        this.lastAttackTick = -9999;
+    }
+    tryTrigger(player, mouseCoord, world) {
+        if (world.tick < this.lastAttackTick + this.attackPeriod) {
+            return;
+        }
+        this.lastAttackTick = world.tick;
+        const from = player.getCenterCoord();
+        const baseAngus = Math.atan2(mouseCoord.y - from.y, mouseCoord.x - from.x);
+        for (let i = 1; i <= 5; i++) {
+            const angus = baseAngus + (i - 3) * 0.20;
+            const target = {
+                x: from.x + 256 * Math.cos(angus),
+                y: from.y + 256 * Math.sin(angus),
+            };
+            world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, from, target, 32 * 3, 10));
+        }
         sounds.lazer.play();
     }
 }
 class FriendlyProjectile {
+    constructor() {
+        this.color = '#80F';
+    }
     onHit(mob) {
         return false;
     }
     paint(x, y) {
         ctx.beginPath();
         ctx.arc(x, y, 1.5, 2 * Math.PI, 0);
-        ctx.fillStyle = '#80F';
+        ctx.fillStyle = this.color;
         ctx.fill();
     }
 }
 class ProjectileAnim {
     constructor(projectile, from, to, range, speed) {
         this.projectile = projectile;
-        this.x = from.x + 16;
-        this.y = from.y + 16;
+        this.x = from.x;
+        this.y = from.y;
         const hypo = Math.sqrt(square(to.x - this.x) + square(to.y - this.y));
         if (hypo < 0.001) {
             this.vx = speed;
@@ -580,7 +616,7 @@ class ProjectileAnim {
             this.vy = speed * (to.y - this.y) / hypo;
         }
         this.tick = 0;
-        this.maxTick = range / speed;
+        this.maxTick = 1 + range / speed;
     }
     update(world) {
         this.tick++;
