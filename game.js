@@ -468,7 +468,7 @@ class ActionBar {
         this.spells[0] = allSpells.shotgun;
         this.spells[1] = allSpells.curseGround;
         this.spells[2] = allSpells.rootingProjectile;
-        this.spells[3] = allSpells.shotgun4;
+        this.spells[3] = allSpells.healProjectile;
         this.spells[4] = allSpells.noSpell;
         this.topX = 400;
         this.topY = CanvasHeight - 38;
@@ -646,13 +646,18 @@ class World {
         this.friendlyProjectiles = [];
         this.dangerousProjectiles = [];
         this.tick = 0;
+        this.annimAdded = false;
     }
     addProjectile(anim, from) {
         this.friendlyProjectiles.push(anim);
-        this.friendlyProjectiles.sort((a, b) => a.zIndex - b.zIndex);
+        this.annimAdded = true;
     }
     update() {
         this.tick++;
+        if (this.annimAdded) {
+            this.friendlyProjectiles.sort((a, b) => a.zIndex - b.zIndex);
+            this.annimAdded = false;
+        }
         const changed = this.localPlayer.updateLocalPlayer(input, this);
         for (let p of this.players) {
             p.update();

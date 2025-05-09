@@ -37,7 +37,7 @@ class RootingProjectile {
     constructor() {
         this.sprite = getRavenSprite(1, 48);
         this.spriteCorrectAngus = -0.75 * Math.PI;
-            this.speed = 8;
+        this.speed = 8;
         this.range = 5;
         this.radius = 12;
         this.zIndex = 20;
@@ -45,25 +45,58 @@ class RootingProjectile {
     onHit(mob) {
         return false;
     }
-    paint(x, y, angus) {
-        this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius,        
-            angus + this.spriteCorrectAngus);
+    paint(x, y, anim) {
+        this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius,
+            anim.angus + this.spriteCorrectAngus);
+    }
+}
+class HealingProjectile {
+    constructor() {
+        this.sprite = getRavenSprite(10, 60);
+        this.range = 3;
+        this.speed = 18;
+        this.radius = 12;
+        this.zIndex = 20;
+    }
+    onHit(mob) {
+        return false;
+    }
+    paint(x, y, anim) {
+        const angus = anim.tick * -0.25;
+        this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius, angus);
+    }
+}
+class HealAreaProjectile {
+    constructor() {
+        this.sprite = getRavenSprite(8, 60);
+        this.radius = 2;
+        this.zIndex = -10;
+    }
+    onHit(mob) {
+        return true;
+    }
+    paint(x, y, anim) {
+        const r = this.radius * 64 * (anim.tick + 1) / anim.maxTick;
+        const nbItems = 20;
+        for (let i = 0; i < nbItems; i++) {
+            const angus = Math.PI * 2 * i / nbItems;
+            this.sprite.paintScale(x + r * Math.cos(angus), y + r * Math.sin(angus), 12, 12);
+        }
     }
 }
 class CircleAreaProjectile {
     constructor() {
-        this.color = '#85d';
         this.sprite = getRavenSprite(4, 48);
-        this.isFriendly = true;
         this.radius = 1.5;
         this.zIndex = -10;
     }
     onHit(mob) {
         return true;
     }
-    paint(x, y) {
+    paint(x, y, anim) {
         const pxRadius = this.radius * 64;
-        this.sprite.paintScale(x - pxRadius, y - pxRadius, pxRadius * 2, pxRadius * 2 );       
+        const angus = anim.tick * 0.01;
+        this.sprite.paintRotate(x - pxRadius, y - pxRadius, pxRadius * 2, pxRadius * 2, angus);
     }
 }
 class ProjectileAnim {
@@ -85,15 +118,22 @@ class ProjectileAnim {
         this.maxTick = 1 + range / speed;
         this.zIndex = this.projectile.zIndex || 10;
         this.angus = Math.atan2(this.vy, this.vx);
+        this.endFunc = null;
     }
     update(world) {
         this.tick++;
         this.x += this.vx;
         this.y += this.vy;
-        return this.tick < this.maxTick;
+        if (this.tick < this.maxTick) {
+            return true;
+        }
+        if (this.endFunc != null) {
+            this.endFunc({ x: this.x, y: this.y }, world);
+        }
+        return false;
     }
     paint(camera) {
-        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.angus);
+        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this);
     }
 }
 
@@ -111,7 +151,7 @@ class DurationAnim {
         return this.tick < this.maxTick;
     }
     paint(camera) {
-        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y));
+        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this);
     }
 }
 class NoSpell {
@@ -127,9 +167,16 @@ class ThrowProjectileSpell {
         this.castingTime = 0;
         this.cooldown = 0.7;
         this.sprite = getRavenSprite(0, 93);
+        this.endFunc = null;
     }
     trigger(player, mouseCoord, world) {
         const anim = new ProjectileAnim(this.projectile, player.getCenterCoord(), mouseCoord);
+        if (this.endFunc != null) {
+            const self = this;
+            anim.endFunc = function (coord) {
+                self.endFunc(coord, player, world);
+            }
+        }
         world.addProjectile(anim, player);
         sounds.lazer.play();
         return true;
@@ -137,7 +184,7 @@ class ThrowProjectileSpell {
 }
 class ShotgunAttack {
     constructor(projectile) {
-        this.projectile = projectile;        
+        this.projectile = projectile;
         this.castingTime = 0;
         this.cooldown = 5;
         this.sprite = getRavenSprite(2, 62);
@@ -188,21 +235,46 @@ class ZoneSpell {
 }
 
 class AllSpells {
+
     constructor() {
-        this.noSpell = new NoSpell();
-        this.basicAttack = new ThrowProjectileSpell(new BulletProjectile());
+        this.noSpell = AllSpells.noSpell();
+        this.basicAttack = AllSpells.basicAttack();
+        this.shotgun = AllSpells.shotgun();
+        this.curseGround = AllSpells.curseGround();
+        this.rootingProjectile = AllSpells.rootingProjectile();
+        this.healProjectile = AllSpells.healProjectile();
+    }
+    static noSpell() {
+        return new NoSpell();
+    }
+    static basicAttack() {
+        return new ThrowProjectileSpell(new BulletProjectile());
+    }
+    static shotgun() {
         let projectile = new BulletProjectile();
         projectile.color = '#f60';
         projectile.range = 2;
-        this.shotgun = new ShotgunAttack(projectile);
-        this.curseGround = new ZoneSpell(new CircleAreaProjectile());
-        projectile = new RootingProjectile();
-        this.rootingProjectile = new ThrowProjectileSpell(projectile);
-        this.rootingProjectile.sprite = projectile.sprite;
-        this.shotgun2 = new ShotgunAttack(projectile);
-        this.shotgun3 = new ShotgunAttack(projectile);
-        this.shotgun4 = new ShotgunAttack(projectile);
-        this.shotgun5 = new ShotgunAttack(projectile);
+        return new ShotgunAttack(projectile);
+    }
+    static curseGround() {
+        return new ZoneSpell(new CircleAreaProjectile());
+    }
+    static rootingProjectile() {
+        const projectile = new RootingProjectile();
+        const rootingProjectile = new ThrowProjectileSpell(projectile);
+        rootingProjectile.sprite = projectile.sprite;
+        return rootingProjectile;
+    }
+    static healProjectile() {
+        const projectile = new HealingProjectile();
+        const rootingProjectile = new ThrowProjectileSpell(projectile);
+        rootingProjectile.sprite = projectile.sprite;
+        rootingProjectile.endFunc = function (coord, player, world) {
+            const healZone = new HealAreaProjectile();
+            const anim = new DurationAnim(healZone, 0.2, coord);
+            world.addProjectile(anim, player);
+        }
+        return rootingProjectile;
     }
 }
 const allSpells = new AllSpells();
