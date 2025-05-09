@@ -14,9 +14,12 @@ class Sounds {
         }
         this.lazer = loadSound("lazer");
         this.shotgun2b = loadSound("shotgun-2b");
+        this.shotgun2b.volume = 0.5;
         this.magicMissile = loadSound("magicMissile");
+        this.magicMissile.volume = 0.5;
         this.bubble = loadSound("bubble");
         this.houseKick = loadSound("houseKick");
+        this.houseKick.volume = 0.3;
     }
 }
 const sounds = new Sounds();
