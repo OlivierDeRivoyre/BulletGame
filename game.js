@@ -7,41 +7,53 @@ canvas.width = CanvasWidth;
 canvas.height = CanvasHeight;
 const ctx = canvas.getContext("2d");
 
-
-window.addEventListener('keydown', keydown, false);
-window.addEventListener('keyup', keyup, false);
-
-
-let keysPressed = {
-    left: false,
-    right: false,
-    up: false,
-    down: false,
-};
-
-function keyPressed(pressed, event) {
-    if (event.keyCode == 37 || event.key == 'q') {
-        keysPressed.left = pressed;
+class Input {
+    constructor() {
+        this.keysPressed = {
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+        };
+        this.mouse = { x: 0, y: 0 };
+        this.mouseClicked = false;
+        window.addEventListener('keydown', (e) => this.keydown(e), false);
+        window.addEventListener('keyup', (e) => this.keyup(e), false);
     }
-    else if (event.keyCode == 39 || event.key == 'd') {
-        keysPressed.right = pressed;
+
+    keyPressed(pressed, event) {
+        if (event.keyCode == 37 || event.key == 'q') {
+            this.keysPressed.left = pressed;
+        }
+        else if (event.keyCode == 39 || event.key == 'd') {
+            this.keysPressed.right = pressed;
+        }
+        else if (event.keyCode == 38 || event.key == 'z') {
+            this.keysPressed.up = pressed;
+        }
+        else if (event.keyCode == 40 || event.key == 's') {
+            this.keysPressed.down = pressed;
+        }
     }
-    else if (event.keyCode == 38 || event.key == 'z') {
-        keysPressed.up = pressed;
+    keydown(event) {
+        this.keyPressed(true, event);
     }
-    else if (event.keyCode == 40 || event.key == 's') {
-        keysPressed.down = pressed;
+    keyup(event) {
+        this.keyPressed(false, event);
+    }
+    mouseMove(mouse) {
+        this.mouse = mouse;
+    }
+    mouseDown(mouse) {
+        this.mouse = mouse;
+        this.mouseClicked = true;
+    }
+    mouseUp(mouse) {
+        this.mouse = mouse;
+        this.mouseClicked = false;
     }
 }
-function keydown(event) {
-    keyPressed(true, event);
-}
-function keyup(event) {
-    keyPressed(false, event);
-}
-
-
-
+const input = new Input();
 
 
 const params = new URLSearchParams(window.location.search);
@@ -316,16 +328,17 @@ class Player {
         this.inputX = 0;
         this.inputY = 0;
         this.sprite = getDungeonTileSetHeroSprite(0);
+        this.primaryAttack = new PrimaryAttack();
     }
-    updateLocalPlayer() {
+    updateLocalPlayer(input, world) {
         let changed = false;
-        if (keysPressed.left) {
+        if (input.keysPressed.left) {
             if (this.inputX != -1) {
                 this.inputX = -1;
                 this.vx = 0;
                 changed = true;
             }
-        } else if (keysPressed.right) {
+        } else if (input.keysPressed.right) {
             if (this.inputX != 1) {
                 this.inputX = 1;
                 this.vx = 0;
@@ -336,13 +349,13 @@ class Player {
             this.vx = 0;
             changed = true;
         }
-        if (keysPressed.up) {
+        if (input.keysPressed.up) {
             if (this.inputY != -1) {
                 this.inputY = -1;
                 this.vy = 0;
                 changed = true;
             }
-        } else if (keysPressed.down) {
+        } else if (input.keysPressed.down) {
             if (this.inputY != 1) {
                 this.inputY = 1;
                 this.vy = 0;
@@ -352,6 +365,9 @@ class Player {
             this.inputY = 0;
             this.vy = 0;
             changed = true;
+        }
+        if (input.mouseClicked) {
+            this.primaryAttack.tryTrigger(this, world.camera.toWorldCoord(input.mouse), world);
         }
         return changed;
     }
@@ -378,8 +394,8 @@ class Player {
         this.y += this.vy;
     }
 
-    paint(topX, topY) {
-        this.sprite.paint(Math.floor(this.x - topX), Math.floor(this.y - topY), 0, false);
+    paint(camera) {
+        this.sprite.paint(camera.toCanvasX(this.x),camera.toCanvasY(this.y), 0, false);
     }
     getMsg() {
         return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
@@ -411,8 +427,8 @@ class Mob {
     update() {
 
     }
-    paint(topX, topY) {
-        this.sprite.paint(Math.floor(this.x - topX), Math.floor(this.y - topY), 0, false);
+    paint(camera) {
+        this.sprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), 0, false);
     }
 }
 class CellSprite {
@@ -478,7 +494,9 @@ class Map {
         }
         return row[i];
     }
-    paint(topX, topY) {
+    paint(camera) {
+        const topX = camera.topX;
+        const topY = camera.topY;
         const offsetX = Math.floor(topX / 32) * 32 - topX;
         const offsetY = Math.floor(topY / 32) * 32 - topY;
         for (let j = -1; j <= CanvasCellHeight; j++) {
@@ -491,25 +509,75 @@ class Map {
     }
 }
 
-class Level{
-    constructor(){
+class Level {
+    constructor() {
         this.map = new Map();
         this.mobs = [];
-        this.mobs.push(new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(), 10*32, 5 * 32));
+        this.mobs.push(new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(), 10 * 32, 5 * 32));
     }
-    update(){
+    update() {
 
     }
-    paint(topX, topY) {
-        this.map.paint(topX, topY);
-        for(let mob of this.mobs){
-            mob.paint(topX, topY);
+    paint(camera) {
+        this.map.paint(camera);
+        for (let mob of this.mobs) {
+            mob.paint(camera);
         }
     }
 }
-
+class PrimaryAttack {
+    constructor() {
+        this.projectile = new FriendlyProjectile();
+        this.attackPeriod = 10;
+        this.lastAttackTick = -9999;
+    }
+    tryTrigger(player, mouseCoord, world) {
+        if (world.tick < this.lastAttackTick + this.attackPeriod) {
+            return;
+        }
+        this.lastAttackTick = world.tick;
+        world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, player, mouseCoord, 32 * 5, 15));
+    }
+}
+class FriendlyProjectile {
+    onHit(mob) {
+        return false;
+    }
+    paint(x, y) {
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 2 * Math.PI, 0);
+        ctx.fillStyle = '#0f0';
+        ctx.fill();
+    }
+}
+class ProjectileAnim {
+    constructor(projectile, from, to, range, speed) {
+        this.projectile = projectile;
+        this.x = from.x + 16;
+        this.y = from.y + 16;
+        const hypo = Math.sqrt(square(to.x - this.x) + square(to.y - this.y));
+        if (hypo < 0.001) {
+            this.vx = speed;
+            this.vy = 0;
+        } else {
+            this.vx = speed * (to.x - this.x) / hypo;
+            this.vy = speed * (to.y - this.y) / hypo;
+        }
+        this.tick = 0;
+        this.maxTick = range / speed;
+        console.log(`fire on (${to.x}, ${to.y}), v: (${this.vx}, ${this.vy})`)
+    }
+    update(world) {
+        this.tick++;
+        this.x += this.vx;
+        this.y += this.vy;
+        return this.tick < this.maxTick;
+    }
+    paint(camera) {
+        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y));
+    }
+}
 class World {
-
     constructor(isServer, players, localPlayerId) {
         this.isServer = isServer;
         this.players = players;
@@ -518,13 +586,29 @@ class World {
         if (!this.localPlayer) {
             throw new Error(`Player not found ${localPlayerId}`);
         }
+        this.camera = new CameraOffset(this.localPlayer);
         this.level = new Level();
         this.map = this.level.map;
+        this.friendlyProjectiles = [];
+        this.dangerousProjectiles = [];
+        this.tick = 0;
     }
     update() {
-        const changed = this.localPlayer.updateLocalPlayer();
+        this.tick++;        
+        const changed = this.localPlayer.updateLocalPlayer(input, this);
+        this.camera.update();
         for (let p of this.players) {
             p.update();
+        }
+        for (let i = this.friendlyProjectiles.length - 1; i >= 0; i--) {
+            if (!this.friendlyProjectiles[i].update(this)) {
+                this.friendlyProjectiles.splice(i, 1);
+            }
+        }
+        for (let i = this.dangerousProjectiles.length - 1; i >= 0; i--) {
+            if (!this.dangerousProjectiles[i].update(this)) {
+                this.dangerousProjectiles.splice(i, 1);
+            }
         }
         this.level.update();
         const updates = [];
@@ -533,18 +617,22 @@ class World {
     }
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const topX = Math.floor(this.localPlayer.x - CanvasWidth / 2);
-        const topY = Math.floor(this.localPlayer.y - CanvasHeight / 2);
-        this.level.paint(topX, topY);
+        this.level.paint(this.camera);
+        for (let p of this.friendlyProjectiles) {
+            p.paint(this.camera);
+        }
+        for (let p of this.dangerousProjectiles) {
+            p.paint(this.cameraOffsetY);
+        }
         for (let p of this.players) {
-            p.paint(topX, topY);
+            p.paint(this.camera);
         }
-        if (this.mouse) {
-            ctx.beginPath();
-            ctx.arc(this.mouse.x, this.mouse.y, 2, 2 * Math.PI, 0);
-            ctx.fillStyle = 'red';
-            ctx.fill();
-        }
+
+        ctx.beginPath();
+        ctx.arc(input.mouse.x, input.mouse.y, 2, 2 * Math.PI, 0);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+
     }
     paintGround() {
         for (let i = 0; i < 16; i++) {
@@ -585,14 +673,31 @@ class World {
             }
         }
     }
-    mouseMove(mouse) {
-        this.mouse = mouse;
-    }
-    mouseDown(mouse) {
 
+}
+class CameraOffset {
+    constructor(localPlayer) {
+        this.localPlayer = localPlayer;
+        this.topX = 0;
+        this.topY = 0;
+    }
+    update() {
+        this.topX = Math.floor(this.localPlayer.x - CanvasWidth / 2);
+        this.topY = Math.floor(this.localPlayer.y - CanvasHeight / 2);
+    }
+    toCanvasX(x){
+        return Math.floor(x - this.topX)
+    }
+    toCanvasY(y){
+        return Math.floor(y - this.topY)
+    }
+    toWorldCoord(canvasPoint){
+         return {
+            x: canvasPoint.x + this.topX,
+            y: canvasPoint.y + this.topY,
+        };
     }
 }
-
 class Screen {
     constructor() {
         this.screenCanvas = document.getElementById("myCanvas");
@@ -602,6 +707,7 @@ class Screen {
         window.addEventListener('resize', () => this.windowResize(), false);
         window.addEventListener('mousemove', (e) => this.mouseMove(e), false);
         window.addEventListener('mousedown', (e) => this.mouseDown(e), false);
+        window.addEventListener('mouseup', (e) => this.mouseUp(e), false);
     }
     paint() {
         if (this.currentView) {
@@ -620,16 +726,14 @@ class Screen {
         };
     }
     mouseMove(event) {
-        if (!this.currentView) {
-            return;
-        }
-        this.currentView.mouseMove(this.toCanvasCoord(event.offsetX, event.offsetY));
+        input.mouseMove(this.toCanvasCoord(event.offsetX, event.offsetY));
     }
     mouseDown(event) {
-        if (!this.currentView) {
-            return;
-        }
-        this.currentView.mouseDown(this.toCanvasCoord(event.offsetX, event.offsetY));
+        input.mouseDown(this.toCanvasCoord(event.offsetX, event.offsetY));
+    }
+    mouseUp(event) {
+
+        input.mouseUp(this.toCanvasCoord(event.offsetX, event.offsetY));
     }
     windowResize() {
         if (document.fullscreenElement) {
