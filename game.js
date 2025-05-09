@@ -461,8 +461,9 @@ class Player {
 
 class ActionBar {
     static MaxSpells = 5;
-    constructor(player) {
+    constructor(player, world) {
         this.player = player;
+        this.world = world;
         this.spells = new Array(ActionBar.MaxSpells);
         this.basicAttack = allSpells.basicAttack;
         this.spells[0] = allSpells.shotgun;
@@ -474,50 +475,72 @@ class ActionBar {
         this.topY = CanvasHeight - 38;
         this.shortcuts = ['M2', 'Q', 'E', 'R', 'F'];
     }
-    tryTrigger(spell, world) {
-        if (spell.lastAttackTick && world.tick < spell.lastAttackTick + spell.cooldown * 30) {
+    tryTrigger(spell) {
+        if (spell.lastAttackTick && this.world.tick < spell.lastAttackTick + spell.cooldown * 30) {
             return;
         }
-        if (spell.trigger(this.player, world.camera.toWorldCoord(input.mouse), world)) {
-            spell.lastAttackTick = world.tick;
+        if (spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world)) {
+            spell.lastAttackTick = this.world.tick;
         }
     }
-    update(input, world) {
+    update(input) {
         if (input.mouseClicked) {
-            this.tryTrigger(this.basicAttack, world);
+            this.tryTrigger(this.basicAttack);
         }
         else if (input.mouse2Clicked) {
-            this.tryTrigger(this.spells[0], world);
+            this.tryTrigger(this.spells[0]);
         }
         else if (input.keysPressed.s1) {
-            this.tryTrigger(this.spells[1], world);
+            this.tryTrigger(this.spells[1]);
         }
         else if (input.keysPressed.s2) {
-            this.tryTrigger(this.spells[2], world);
+            this.tryTrigger(this.spells[2]);
         }
         else if (input.keysPressed.s3) {
-            this.tryTrigger(this.spells[3], world);
+            this.tryTrigger(this.spells[3]);
         }
         else if (input.keysPressed.s4) {
-            this.tryTrigger(this.spells[4], world);
+            this.tryTrigger(this.spells[4]);
         }
     }
     paint() {
         ctx.fillStyle = '#222';
         ctx.fillRect(this.topX, this.topY, ActionBar.MaxSpells * 34 + 2, 36);
         for (let i = 0; i < this.spells.length; i++) {
-            const buttonX = 2 + this.topX + i * 34;
-            if (this.spells[i] == null) {
-                continue;
-            }
-            ctx.fillStyle = '#444';
-            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
-            this.spells[i].sprite.paintScale(buttonX, this.topY + 2, 32, 32);
-            ctx.fillStyle = "white";
-            ctx.font = "12px Consolas";
-            ctx.textRendering = "geometricPrecision";
-            ctx.fillText(this.shortcuts[i], buttonX + 2, this.topY + 32);
+            this.paintSpell(i);
         }
+    }
+    paintSpell(i) {
+        const spell = this.spells[i];
+        if (spell == null) {
+            return;
+        }
+        const buttonX = 2 + this.topX + i * 34;
+        const buttonY = 2 + this.topY;
+        ctx.fillStyle = '#444';
+        ctx.fillRect(buttonX, this.topY + 2, 32, 32);
+        spell.sprite.paintScale(buttonX, buttonY, 32, 32);
+
+        if (spell.lastAttackTick && this.world.tick < spell.lastAttackTick + spell.cooldown * 30) {
+            const cooldownFor = this.world.tick - spell.lastAttackTick;
+            const cooldownRatio = 1 - cooldownFor / (spell.cooldown * 30);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(buttonX, buttonY, 32, 32);
+            ctx.clip();
+            ctx.beginPath();
+            ctx.moveTo(buttonX + 16, buttonY + 16);
+            ctx.lineTo(buttonX + 16, buttonY);            
+            ctx.arc(buttonX + 16, buttonY + 16, 30, -0.5 * Math.PI, -0.5 * Math.PI - 2 * cooldownRatio * Math.PI, true);
+            ctx.fillStyle = '#222e';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Consolas";
+        ctx.textRendering = "geometricPrecision";
+        ctx.fillText(this.shortcuts[i], buttonX + 2, buttonY + 30);
     }
 }
 
@@ -699,11 +722,11 @@ class World {
     }
     paintCursor() {
         ctx.beginPath();
-        ctx.arc(input.mouse.x, input.mouse.y, 2.5, 2 * Math.PI, 0);
+        ctx.arc(input.mouse.x, input.mouse.y, 5, 2 * Math.PI, 0);
         ctx.fillStyle = 'yellow';
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(input.mouse.x, input.mouse.y, 2, 2 * Math.PI, 0);
+        ctx.arc(input.mouse.x, input.mouse.y, 4, 2 * Math.PI, 0);
         ctx.fillStyle = 'red';
         ctx.fill();
     }
