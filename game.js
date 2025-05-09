@@ -14,17 +14,21 @@ let keysPressed = {
     left: false,
     right: false,
     up: false,
+    down: false,
 };
 
 function keyPressed(pressed, event) {
-    if (event.keyCode == 37) {
+    if (event.keyCode == 37 || event.key == 'q') {
         keysPressed.left = pressed;
     }
-    else if (event.keyCode == 39) {
+    else if (event.keyCode == 39 || event.key == 'd') {
         keysPressed.right = pressed;
     }
-    else if (event.keyCode == 38 || event.keyCode == 32) { // up or space
+    else if (event.keyCode == 38 || event.key == 'z') {
         keysPressed.up = pressed;
+    }
+    else if (event.keyCode == 40 || event.key == 's') {
+        keysPressed.down = pressed;
     }
 }
 function keydown(event) {
@@ -296,13 +300,10 @@ function square(x) {
     return x * x;
 }
 class Player {
-
     constructor(id) {
         this.id = id;
-
         this.x = 200;
         this.y = 200;
-        this.color = "blue";
         this.vx = 0;
         this.vy = 0;
         this.radius = 40;
@@ -329,34 +330,50 @@ class Player {
             this.vx = 0;
             changed = true;
         }
+        if (keysPressed.up) {
+            if (this.inputY != -1) {
+                this.inputY = -1;
+                this.vy = 0;
+                changed = true;
+            }
+        } else if (keysPressed.down) {
+            if (this.inputY != 1) {
+                this.inputY = 1;
+                this.vy = 0;
+                changed = true;
+            }
+        } else if (this.inputY != 0) {
+            this.inputY = 0;
+            this.vy = 0;
+            changed = true;
+        }
         return changed;
     }
     update() {
-        let accX = Math.abs(this.vx) < 10 ? 3 : Math.abs(this.vx) < 15 ? 2 : 1;
-
-        const newVx = this.vx + this.inputX * accX;
-        const maxVx = this.inputX * 20;
-        if (this.inputX < 0) {
-            this.vx = Math.max(newVx, maxVx);
-        } else if (this.inputX > 0) {
-            this.vx = Math.min(newVx, maxVx);
-        } else {
-            this.vx = 0;
+        function getNewSpeed(v, input) {
+            const maxSpeed = 4;
+            const ratio = Math.abs(v) < maxSpeed * 0.5 ? 1
+                : Math.abs(v) < maxSpeed * 0.8 ? 0.5
+                    : 0.3;
+            const acc = ratio * 2;
+            const newV = v + input * acc;
+            const maxV = input * maxSpeed;
+            if (input < 0) {
+                return Math.max(newV, maxV);
+            } else if (input > 0) {
+                return Math.min(newV, maxV);
+            } else {
+                return Math.floor(v * 10 / 2) / 10;
+            }
         }
-        this.x += this.vx
-        let minX = 0;
-        let maxX = CanvasWidth;
-        this.x = Math.max(minX + this.radius, Math.min(maxX - this.radius, this.x));
-
+        this.vx = getNewSpeed(this.vx, this.inputX);
+        this.vy = getNewSpeed(this.vy, this.inputY);
+        this.x += this.vx;
+        this.y += this.vy;
     }
 
     paint() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 2 * Math.PI, 0);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-
-        this.sprite.paint(this.x + 100, this.y, 0, false);
+        this.sprite.paint(Math.floor(this.x), Math.floor(this.y), 0, false);
     }
     getMsg() {
         return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
@@ -396,6 +413,7 @@ class World {
     }
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.paintGround();
         for (let p of this.players) {
             p.paint();
         }
@@ -404,6 +422,17 @@ class World {
             ctx.arc(this.mouse.x, this.mouse.y, 2, 2 * Math.PI, 0);
             ctx.fillStyle = 'red';
             ctx.fill();
+        }
+    }
+    paintGround() {
+        for (let i = 0; i < 16; i++) {
+            for (let j = 0; j < 9; j++) {
+                ctx.beginPath();
+                ctx.lineWidth = 0;
+                ctx.fillStyle = (i + j) % 2 == 0 ? "#509060" : "#509360";
+                ctx.rect(i * 32, j * 32, 32, 32);
+                ctx.fill();
+            }
         }
     }
     getNewWorldMsg() {
