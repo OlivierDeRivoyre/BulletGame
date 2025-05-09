@@ -466,14 +466,14 @@ class ActionBar {
         this.world = world;
         this.spells = new Array(ActionBar.MaxSpells);
         this.basicAttack = allSpells.basicAttack;
-        this.spells[0] = allSpells.shotgun;
-        this.spells[1] = allSpells.curseGround;
-        this.spells[2] = allSpells.rootingProjectile;
-        this.spells[3] = allSpells.healProjectile;
-        this.spells[4] = allSpells.protectSpell;
+        this.spells[0] = allSpells.curseGround;
+        this.spells[1] = allSpells.rootingProjectile;
+        this.spells[2] = allSpells.healProjectile;
+        this.spells[3] = allSpells.protectSpell;
+        this.spells[4] = allSpells.shotgun;
         this.topX = 400;
         this.topY = CanvasHeight - 38;
-        this.shortcuts = ['M2', 'Q', 'E', 'R', 'F'];
+        this.shortcuts = ['Q', 'E', 'R', 'F', 'M2'];
     }
     tryTrigger(spell) {
         if (spell.lastAttackTick && this.world.tick < spell.lastAttackTick + spell.cooldown * 30) {
@@ -488,19 +488,19 @@ class ActionBar {
             this.tryTrigger(this.basicAttack);
         }
         else if (input.mouse2Clicked) {
-            this.tryTrigger(this.spells[0]);
+            this.tryTrigger(this.spells[4]);
         }
         else if (input.keysPressed.s1) {
-            this.tryTrigger(this.spells[1]);
+            this.tryTrigger(this.spells[0]);
         }
         else if (input.keysPressed.s2) {
-            this.tryTrigger(this.spells[2]);
+            this.tryTrigger(this.spells[1]);
         }
         else if (input.keysPressed.s3) {
-            this.tryTrigger(this.spells[3]);
+            this.tryTrigger(this.spells[2]);
         }
         else if (input.keysPressed.s4) {
-            this.tryTrigger(this.spells[4]);
+            this.tryTrigger(this.spells[3]);
         }
     }
     paint() {
@@ -522,6 +522,8 @@ class ActionBar {
         spell.sprite.paintScale(buttonX, buttonY, 32, 32);
 
         if (spell.lastAttackTick && this.world.tick < spell.lastAttackTick + spell.cooldown * 30) {
+            ctx.fillStyle = '#4448';
+            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
             const cooldownFor = this.world.tick - spell.lastAttackTick;
             const cooldownRatio = 1 - cooldownFor / (spell.cooldown * 30);
             ctx.save();
@@ -530,7 +532,7 @@ class ActionBar {
             ctx.clip();
             ctx.beginPath();
             ctx.moveTo(buttonX + 16, buttonY + 16);
-            ctx.lineTo(buttonX + 16, buttonY);            
+            ctx.lineTo(buttonX + 16, buttonY);
             ctx.arc(buttonX + 16, buttonY + 16, 30, -0.5 * Math.PI, -0.5 * Math.PI - 2 * cooldownRatio * Math.PI, true);
             ctx.fillStyle = '#222e';
             ctx.fill();

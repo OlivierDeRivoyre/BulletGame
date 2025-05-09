@@ -285,11 +285,13 @@ class AllSpells {
         const projectile = new RootingProjectile();
         const rootingProjectile = new ThrowProjectileSpell(projectile);
         rootingProjectile.sprite = projectile.sprite;
+        rootingProjectile.cooldown = 8;
         return rootingProjectile;
     }
     static healProjectile() {
         const projectile = new HealingProjectile();
         const rootingProjectile = new ThrowProjectileSpell(projectile);
+        rootingProjectile.cooldown = 10;
         rootingProjectile.sprite = projectile.sprite;
         rootingProjectile.endFunc = function (coord, player, world) {
             const healZone = new HealAreaProjectile();
