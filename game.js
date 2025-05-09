@@ -17,8 +17,10 @@ class Input {
         };
         this.mouse = { x: 0, y: 0 };
         this.mouseClicked = false;
+        this.mouse2Clicked = false;
         window.addEventListener('keydown', (e) => this.keydown(e), false);
         window.addEventListener('keyup', (e) => this.keyup(e), false);
+        window.addEventListener('contextmenu', (e) => this.contextmenu(e), false);
     }
 
     keyPressed(pressed, event) {
@@ -44,13 +46,17 @@ class Input {
     mouseMove(mouse) {
         this.mouse = mouse;
     }
-    mouseDown(mouse) {
+    mouseButton(mouse, pressed, rightclick) {
         this.mouse = mouse;
-        this.mouseClicked = true;
+        if (rightclick) {
+            this.mouse2Clicked = pressed;
+        } else {
+            this.mouseClicked = pressed;
+        }
     }
-    mouseUp(mouse) {
-        this.mouse = mouse;
-        this.mouseClicked = false;
+    contextmenu(e) {
+        e.preventDefault();
+        return false;
     }
 }
 const input = new Input();
@@ -264,7 +270,7 @@ class Client {
 }
 class Sounds {
     constructor() {
-        function loadSound(name) {            
+        function loadSound(name) {
             return new Audio("sound/" + name + ".wav");
         }
         this.lazer = loadSound("lazer");
@@ -731,12 +737,20 @@ class Screen {
     mouseMove(event) {
         input.mouseMove(this.toCanvasCoord(event.offsetX, event.offsetY));
     }
+    mouseButton(e, pressed) {
+        let rightclick = false;
+        if (e.which) {
+            rightclick = (e.which == 3);
+        } else if (e.button) {
+            rightclick = (e.button == 2);
+        }
+        input.mouseButton(this.toCanvasCoord(event.offsetX, event.offsetY), pressed, rightclick);
+    }
     mouseDown(event) {
-        input.mouseDown(this.toCanvasCoord(event.offsetX, event.offsetY));
+        this.mouseButton(event, true);
     }
     mouseUp(event) {
-
-        input.mouseUp(this.toCanvasCoord(event.offsetX, event.offsetY));
+        this.mouseButton(event, false);
     }
     windowResize() {
         if (document.fullscreenElement) {
