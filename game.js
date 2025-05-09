@@ -457,7 +457,7 @@ class ActionBar {
         this.spells = new Array(ActionBar.MaxSpells);
         this.basicAttack = allSpells.basicAttack;
         this.spells[0] = allSpells.shotgun;
-        this.spells[1] = allSpells.shotgun2;
+        this.spells[1] = allSpells.curseGround;
         this.spells[2] = allSpells.shotgun3;
         this.spells[3] = allSpells.shotgun4;
         this.spells[4] = allSpells.noSpell;
@@ -610,12 +610,7 @@ class Level {
     update() {
 
     }
-    paint(camera) {
-        this.map.paint(camera);
-        for (let mob of this.mobs) {
-            mob.paint(camera);
-        }
-    }
+
 }
 
 class World {
@@ -660,12 +655,15 @@ class World {
     }
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.level.paint(this.camera);
+        this.level.map.paint(this.camera);
         for (let p of this.friendlyProjectiles) {
             p.paint(this.camera);
         }
         for (let p of this.dangerousProjectiles) {
-            p.paint(this.cameraOffsetY);
+            p.paint(this.camera);
+        }
+        for (let mob of this.level.mobs) {
+            mob.paint(this.camera);
         }
         for (let p of this.players) {
             p.paint(this.camera);

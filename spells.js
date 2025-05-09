@@ -6,7 +6,7 @@ const shikashiTileSet = loadImg("Shikashi");
 function getShikashiTile(i, j) {
     return new SimpleSprite(shikashiTileSet, i * 32, j * 32, 32, 32);
 }
-const emptySprite = getShikashiTile(10,1);
+const emptySprite = getShikashiTile(10, 1);
 class Sounds {
     constructor() {
         function loadSound(name) {
@@ -21,6 +21,7 @@ const sounds = new Sounds();
 class FriendlyProjectile {
     constructor() {
         this.color = '#80F';
+        this.isFriendly = true;
     }
     onHit(mob) {
         return false;
@@ -30,7 +31,6 @@ class FriendlyProjectile {
         ctx.fillRect(x, y, 6, 6);
     }
 }
-
 class ProjectileAnim {
     constructor(projectile, from, to, range, speed) {
         this.projectile = projectile;
@@ -55,6 +55,45 @@ class ProjectileAnim {
     }
     paint(camera) {
         this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y));
+    }
+}
+class CircleAreaProjectile {
+    constructor() {
+        this.color = '#85d';
+        this.isFriendly = true;
+        this.radius = 64 * 1.5;
+    }
+    onHit(mob) {
+        return true;
+    }
+    paint(x, y) {
+        ctx.beginPath();
+        ctx.arc(x, y, this.radius, 2 * Math.PI, 0);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
+}
+class DurationAnim {
+    constructor(projectile, tickCount, coord) {
+        this.projectile = projectile;
+        this.maxTick = tickCount;
+        this.x = coord.x;
+        this.y = coord.y;
+        this.tick = 0;
+    }
+    update(world) {
+        this.tick++;
+        return this.tick < this.maxTick;
+    }
+    paint(camera) {
+        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y));
+    }
+}
+class NoSpell {
+    constructor() {
+        this.sprite = emptySprite;
+    }
+    tryTrigger(player, mouseCoord, world) {
     }
 }
 class BasicAttack {
@@ -99,11 +138,35 @@ class ShotgunAttack {
         sounds.shotgun2b.play();
     }
 }
-class NoSpell {
-    constructor() {
-        this.sprite = emptySprite;
+class ZoneSpell {
+    static maxRangeCoord(from, to, maxRange) {
+        const d = Math.sqrt(square(to.x - from.x) + square(to.y - from.y));
+        if(d < maxRange){
+            return {x: to.x, y : to.y};
+        }
+        const ratio = maxRange / d;
+        return {
+            x: from.x + (to.x - from.x) * ratio,
+            y: from.y + (to.y - from.y) * ratio,
+        }
+    }
+    constructor(projectile) {
+        this.projectile = projectile;
+        this.sprite = getRavenSprite(4, 48);  
+        this.attackPeriod = 60;
+        this.lastAttackTick = -9999;
+        this.range = 64 * 5;
+        this.radius = 64 * 5;
+        this.duration = 30 * 5;      
     }
     tryTrigger(player, mouseCoord, world) {
+        if (world.tick < this.lastAttackTick + this.attackPeriod) {
+            return;
+        }
+        this.lastAttackTick = world.tick;
+        
+        const center = ZoneSpell.maxRangeCoord(player.getCenterCoord(), mouseCoord, this.range);
+        world.friendlyProjectiles.push(new DurationAnim(this.projectile, this.duration, center));        
     }
 }
 
@@ -112,6 +175,7 @@ class AllSpells {
         this.noSpell = new NoSpell();
         this.basicAttack = new BasicAttack();
         this.shotgun = new ShotgunAttack();
+        this.curseGround = new ZoneSpell(new CircleAreaProjectile());
         this.shotgun2 = new ShotgunAttack();
         this.shotgun3 = new ShotgunAttack();
         this.shotgun4 = new ShotgunAttack();
