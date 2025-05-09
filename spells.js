@@ -53,6 +53,7 @@ class RootingProjectile {
 class CircleAreaProjectile {
     constructor() {
         this.color = '#85d';
+        this.sprite = getRavenSprite(4, 48);
         this.isFriendly = true;
         this.radius = 1.5;
         this.zIndex = -10;
@@ -61,10 +62,8 @@ class CircleAreaProjectile {
         return true;
     }
     paint(x, y) {
-        ctx.beginPath();
-        ctx.arc(x, y, this.radius * 64, 2 * Math.PI, 0);
-        ctx.fillStyle = this.color;
-        ctx.fill();
+        const pxRadius = this.radius * 64;
+        this.sprite.paintScale(x - pxRadius, y - pxRadius, pxRadius * 2, pxRadius * 2 );       
     }
 }
 class ProjectileAnim {
@@ -138,7 +137,7 @@ class ThrowProjectileSpell {
 }
 class ShotgunAttack {
     constructor(projectile) {
-        this.projectile = projectile;
+        this.projectile = projectile;        
         this.castingTime = 0;
         this.cooldown = 5;
         this.sprite = getRavenSprite(2, 62);
@@ -173,7 +172,7 @@ class ZoneSpell {
     }
     constructor(projectile) {
         this.projectile = projectile;
-        this.sprite = getRavenSprite(4, 48);
+        this.sprite = projectile.sprite;
         this.castingTime = 0;
         this.cooldown = 5;
         this.range = 5;
@@ -193,12 +192,13 @@ class AllSpells {
         this.noSpell = new NoSpell();
         this.basicAttack = new ThrowProjectileSpell(new BulletProjectile());
         let projectile = new BulletProjectile();
-        projectile.color = '#44f';
+        projectile.color = '#f60';
         projectile.range = 2;
         this.shotgun = new ShotgunAttack(projectile);
         this.curseGround = new ZoneSpell(new CircleAreaProjectile());
-        this.rootingProjectile = new ThrowProjectileSpell(new RootingProjectile());
-        this.rootingProjectile.sprite = getRavenSprite(1, 48);
+        projectile = new RootingProjectile();
+        this.rootingProjectile = new ThrowProjectileSpell(projectile);
+        this.rootingProjectile.sprite = projectile.sprite;
         this.shotgun2 = new ShotgunAttack(projectile);
         this.shotgun3 = new ShotgunAttack(projectile);
         this.shotgun4 = new ShotgunAttack(projectile);
