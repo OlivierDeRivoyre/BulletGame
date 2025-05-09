@@ -1,11 +1,13 @@
 const CanvasCellWidth = 16;
 const CanvasCellHeight = 9;
-const CanvasWidth = 32 * CanvasCellWidth;//512
-const CanvasHeight = 32 * CanvasCellHeight;//288
+const CanvasWidth = 64 * CanvasCellWidth;//1024
+const CanvasHeight = 64 * CanvasCellHeight;//576
 const canvas = document.createElement("canvas");
 canvas.width = CanvasWidth;
 canvas.height = CanvasHeight;
-const ctx = canvas.getContext("2d");
+canvas.style.imageRendering = 'pixelated';
+const ctx = canvas.getContext("2d", { alpha: false });
+ctx.imageSmoothingEnabled = false;
 
 class Input {
     constructor() {
@@ -14,6 +16,11 @@ class Input {
             right: false,
             up: false,
             down: false,
+            s1: false,
+            s2: false,
+            s3: false,
+            s4: false,
+            s5: false,
         };
         this.mouse = { x: 0, y: 0 };
         this.mouseClicked = false;
@@ -24,17 +31,22 @@ class Input {
     }
 
     keyPressed(pressed, event) {
-        if (event.keyCode == 37 || event.key == 'q') {
+        if (event.keyCode == 37 || event.code == 'KeyA') {
             this.keysPressed.left = pressed;
-        }
-        else if (event.keyCode == 39 || event.key == 'd') {
+        } else if (event.keyCode == 39 || event.code == 'KeyD') {
             this.keysPressed.right = pressed;
-        }
-        else if (event.keyCode == 38 || event.key == 'z') {
+        } else if (event.keyCode == 38 || event.code == 'KeyW') {
             this.keysPressed.up = pressed;
-        }
-        else if (event.keyCode == 40 || event.key == 's') {
+        } else if (event.keyCode == 40 || event.code == 'KeyS') {
             this.keysPressed.down = pressed;
+        } else if (event.code == 'KeyQ') {
+            this.keysPressed.s1 = pressed;
+        } else if (event.code == 'KeyE') {
+            this.keysPressed.s2 = pressed;
+        } else if (event.code == 'KeyR') {
+            this.keysPressed.s3 = pressed;
+        } else if (event.code == 'KeyF') {
+            this.keysPressed.s4 = pressed;
         }
     }
     keydown(event) {
@@ -60,7 +72,6 @@ class Input {
     }
 }
 const input = new Input();
-
 
 const params = new URLSearchParams(window.location.search);
 const server = params.get("server");
@@ -268,16 +279,6 @@ class Client {
         }
     }
 }
-class Sounds {
-    constructor() {
-        function loadSound(name) {
-            return new Audio("sound/" + name + ".wav");
-        }
-        this.lazer = loadSound("lazer");
-        this.shotgun2b = loadSound("shotgun-2b");
-    }
-}
-const sounds = new Sounds();
 
 function loadImg(name) {
     const img = new Image();
@@ -297,6 +298,27 @@ function getDungeonTileSetVilainSprite(i) {
     const y = 9 + i * 24;
     return new DoubleSprite(dungeonTileSet, x, y, 16, 24);
 }
+class SimpleSprite {
+    constructor(tile, tx, ty, tWidth, tHeight) {
+        this.tile = tile;
+        this.tx = tx;
+        this.ty = ty;
+        this.tWidth = tWidth;
+        this.tHeight = tHeight;
+    }
+    paint(x, y) {
+        ctx.drawImage(this.tile,
+            this.tx, this.ty, this.tWidth, this.tHeight,
+            x, y, this.tWidth, this.tHeight
+        );
+    }
+    paintScale(x, y, w, h) {
+        ctx.drawImage(this.tile,
+            this.tx, this.ty, this.tWidth, this.tHeight,
+            x, y, w, h
+        );
+    }
+}
 class DoubleSprite {
     constructor(tile, tx, ty, tWidth, tHeight) {
         this.tile = tile;
@@ -308,7 +330,7 @@ class DoubleSprite {
     paint(x, y, index, reverse) {
         index |= 0;
         if (reverse) {
-            this.paint32Reverse(x, y, index);
+            this.paintReverse(x, y, index);
             return;
         }
         // ctx.fillStyle = "pink"; ctx.fillRect(x, y, this.tWidth, this.tHeight);
@@ -316,7 +338,7 @@ class DoubleSprite {
             this.tx + index * this.tWidth, this.ty,
             this.tWidth, this.tHeight,
             x, y,
-            this.tWidth, this.tHeight
+            this.tWidth * 2, this.tHeight * 2
         );
     }
     paintReverse(x, y, index) {
@@ -326,7 +348,7 @@ class DoubleSprite {
         ctx.drawImage(this.tile,
             this.tx + index * this.tWidth, this.ty,
             this.tWidth, this.tHeight,
-            0, 0, this.tWidth, this.tHeight
+            0, 0, this.tWidth * 2, this.tHeight * 2
         );
         ctx.restore();
     }
@@ -349,7 +371,7 @@ class Player {
         this.secondaryAttack = new ShotgunAttack();
     }
     getCenterCoord() {
-        return { x: this.x + this.sprite.tWidth / 2, y: this.y + this.sprite.tHeight / 2 };
+        return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
     }
     updateLocalPlayer(input, world) {
         let changed = false;
@@ -436,6 +458,46 @@ class Player {
         }
     }
 }
+
+class ActionBar {
+    static MaxSpells = 5;
+    constructor(player) {
+        this.player = player;
+        this.spells = new Array(ActionBar.MaxSpells);
+        this.basicAttack = allSpells.basicAttack;
+        this.spells[0] = allSpells.shotgun;
+        this.spells[1] = allSpells.shotgun;
+        this.spells[2] = allSpells.shotgun2;
+        this.spells[3] = allSpells.shotgun3;
+        this.spells[4] = allSpells.basicAttack;
+        this.topX = 400;
+        this.topY = CanvasHeight - 38;
+        this.shortcuts = ['M2', 'Q', 'R', 'T', 'F'];
+    }
+    update() {
+
+    }
+    paint() {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(this.topX, this.topY, ActionBar.MaxSpells * 34 + 2, 36);
+        for (let i = 0; i < this.spells.length; i++) {
+            const buttonX = 2 + this.topX + i * 34;
+            if (this.spells[i] == null) {
+                continue;
+            }
+            ctx.fillStyle = '#444';
+            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
+            this.spells[i].sprite.paintScale(buttonX, this.topY + 2, 32, 32);
+            ctx.fillStyle = "white";
+            ctx.font = "12px Consolas";
+            // let textPath = ctx.outlineText(this.shortcuts[i])
+            //ctx.fill(textPath.offset(buttonX + 2, this.topY + 10))
+            ctx.textRendering = "geometricPrecision";
+            ctx.fillText(this.shortcuts[i], buttonX + 2, this.topY + 32);
+        }
+    }
+}
+
 class AggroMobBrain {
 
 }
@@ -468,10 +530,10 @@ class CellSprite {
             ctx.beginPath();
             ctx.lineWidth = 0;
             ctx.fillStyle = this.color;
-            ctx.rect(x, y, 32, 32);
+            ctx.rect(x, y, 64, 64);
             ctx.fill();
         } else {
-            this.sprite.paint(x, y, 32, 32);
+            this.sprite.paintScale(x, y, 64, 64);
         }
     }
 }
@@ -507,8 +569,8 @@ class Map {
         }
     }
     getCell(x, y) {
-        const i = Math.floor(x / 32);
-        const j = Math.floor(y / 32);
+        const i = Math.floor(x / 64);
+        const j = Math.floor(y / 64);
         if (j < 0 || j >= this.cells.length) {
             return this.borderCell;
         }
@@ -521,13 +583,13 @@ class Map {
     paint(camera) {
         const topX = camera.topX;
         const topY = camera.topY;
-        const offsetX = Math.floor(topX / 32) * 32 - topX;
-        const offsetY = Math.floor(topY / 32) * 32 - topY;
+        const offsetX = Math.floor(topX / 64) * 64 - topX;
+        const offsetY = Math.floor(topY / 64) * 64 - topY;
         for (let j = -1; j <= CanvasCellHeight; j++) {
             for (let i = -1; i <= CanvasCellWidth; i++) {
-                const x = topX + i * 32;
-                const y = topY + j * 32;
-                this.getCell(x, y).paint(offsetX + i * 32, offsetY + j * 32);
+                const x = topX + i * 64;
+                const y = topY + j * 64;
+                this.getCell(x, y).paint(offsetX + i * 64, offsetY + j * 64);
             }
         }
     }
@@ -549,86 +611,7 @@ class Level {
         }
     }
 }
-class BasicAttack {
-    constructor() {
-        this.projectile = new FriendlyProjectile();
-        this.attackPeriod = 10;
-        this.lastAttackTick = -9999;
-    }
-    tryTrigger(player, mouseCoord, world) {
-        if (world.tick < this.lastAttackTick + this.attackPeriod) {
-            return;
-        }
-        this.lastAttackTick = world.tick;
-        world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, player.getCenterCoord(), mouseCoord, 32 * 5, 15));
-        sounds.lazer.play();
-    }
-}
-class ShotgunAttack {
-    constructor() {
-        this.projectile = new FriendlyProjectile();
-        this.projectile.color = '#44f';
-        this.attackPeriod = 30 * 5;
-        this.lastAttackTick = -9999;
-    }
-    tryTrigger(player, mouseCoord, world) {
-        if (world.tick < this.lastAttackTick + this.attackPeriod) {
-            return;
-        }
-        this.lastAttackTick = world.tick;
-        const from = player.getCenterCoord();
-        const baseAngus = Math.atan2(mouseCoord.y - from.y, mouseCoord.x - from.x);
-        for (let i = 1; i <= 5; i++) {
-            const angus = baseAngus + (i - 3) * 0.20;
-            const target = {
-                x: from.x + 256 * Math.cos(angus),
-                y: from.y + 256 * Math.sin(angus),
-            };
-            world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, from, target, 32 * 3, 10));
-        }
-        sounds.shotgun2b.play();
-    }
-}
-class FriendlyProjectile {
-    constructor() {
-        this.color = '#80F';
-    }
-    onHit(mob) {
-        return false;
-    }
-    paint(x, y) {
-        ctx.beginPath();
-        ctx.arc(x, y, 1.5, 2 * Math.PI, 0);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-    }
-}
-class ProjectileAnim {
-    constructor(projectile, from, to, range, speed) {
-        this.projectile = projectile;
-        this.x = from.x;
-        this.y = from.y;
-        const hypo = Math.sqrt(square(to.x - this.x) + square(to.y - this.y));
-        if (hypo < 0.001) {
-            this.vx = speed;
-            this.vy = 0;
-        } else {
-            this.vx = speed * (to.x - this.x) / hypo;
-            this.vy = speed * (to.y - this.y) / hypo;
-        }
-        this.tick = 0;
-        this.maxTick = 1 + range / speed;
-    }
-    update(world) {
-        this.tick++;
-        this.x += this.vx;
-        this.y += this.vy;
-        return this.tick < this.maxTick;
-    }
-    paint(camera) {
-        this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y));
-    }
-}
+
 class World {
     constructor(isServer, players, localPlayerId) {
         this.isServer = isServer;
@@ -639,6 +622,7 @@ class World {
             throw new Error(`Player not found ${localPlayerId}`);
         }
         this.camera = new CameraOffset(this.localPlayer);
+        this.actionBar = new ActionBar(this.localPlayer, this);
         this.level = new Level();
         this.map = this.level.map;
         this.friendlyProjectiles = [];
@@ -648,10 +632,10 @@ class World {
     update() {
         this.tick++;
         const changed = this.localPlayer.updateLocalPlayer(input, this);
-        this.camera.update();
         for (let p of this.players) {
             p.update();
         }
+        this.camera.update();
         for (let i = this.friendlyProjectiles.length - 1; i >= 0; i--) {
             if (!this.friendlyProjectiles[i].update(this)) {
                 this.friendlyProjectiles.splice(i, 1);
@@ -663,6 +647,7 @@ class World {
             }
         }
         this.level.update();
+        this.actionBar.update();
         const updates = [];
 
         return updates;
@@ -679,6 +664,7 @@ class World {
         for (let p of this.players) {
             p.paint(this.camera);
         }
+        this.actionBar.paint();
         this.paintCursor();
     }
     paintCursor() {
@@ -747,6 +733,7 @@ class CameraOffset {
 class Screen {
     constructor() {
         this.screenCanvas = document.getElementById("myCanvas");
+        this.screenCanvas.style.imageRendering = 'pixelated';
         this.screenCtx = this.screenCanvas.getContext("2d");
         this.currentView = null;
         this.windowResize();

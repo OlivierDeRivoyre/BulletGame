@@ -2,26 +2,29 @@
 <title>Bullet game</title>
 <meta name="viewport" content="width=810; initial-scale=1.0">
 <style>
-    .board {    
-        margin-top: 4em;  
+    .board {
+        margin-top: 4em;
         margin-left: auto;
         margin-right: auto;
         border: 3px solid green;
         display: block;
         cursor: none;
     }
+
+  
 </style>
 
 <body>
     <canvas id="myCanvas" class="board"></canvas>
-    <div id="myId"></div>    
-    <br/>
+    <div id="myId"></div>
+    <br />
     <button onclick="fullScreen()">Full Screen</button>
 </body>
 <script src="lib/peerjs.min.js"></script>
 <script>console.clear()</script>
 <script src="lib/crypto-aes-gcm.js"></script>
 <script src="game.js"></script>
+<script src="spells.js"></script>
 
 <!--
 Thanks to Shikashipx and 0x72 for theirs CCA/MIT work on the assets:
