@@ -262,6 +262,15 @@ class Client {
         }
     }
 }
+class Sounds {
+    constructor() {
+        function loadSound(name) {            
+            return new Audio("sound/" + name + ".wav");
+        }
+        this.lazer = loadSound("lazer");
+    }
+}
+const sounds = new Sounds();
 
 function loadImg(name) {
     const img = new Image();
@@ -395,7 +404,7 @@ class Player {
     }
 
     paint(camera) {
-        this.sprite.paint(camera.toCanvasX(this.x),camera.toCanvasY(this.y), 0, false);
+        this.sprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), 0, false);
     }
     getMsg() {
         return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
@@ -537,6 +546,7 @@ class PrimaryAttack {
         }
         this.lastAttackTick = world.tick;
         world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, player, mouseCoord, 32 * 5, 15));
+        sounds.lazer.play();
     }
 }
 class FriendlyProjectile {
@@ -546,7 +556,7 @@ class FriendlyProjectile {
     paint(x, y) {
         ctx.beginPath();
         ctx.arc(x, y, 1.5, 2 * Math.PI, 0);
-        ctx.fillStyle = '#0f0';
+        ctx.fillStyle = '#80F';
         ctx.fill();
     }
 }
@@ -565,7 +575,6 @@ class ProjectileAnim {
         }
         this.tick = 0;
         this.maxTick = range / speed;
-        console.log(`fire on (${to.x}, ${to.y}), v: (${this.vx}, ${this.vy})`)
     }
     update(world) {
         this.tick++;
@@ -594,7 +603,7 @@ class World {
         this.tick = 0;
     }
     update() {
-        this.tick++;        
+        this.tick++;
         const changed = this.localPlayer.updateLocalPlayer(input, this);
         this.camera.update();
         for (let p of this.players) {
@@ -627,23 +636,17 @@ class World {
         for (let p of this.players) {
             p.paint(this.camera);
         }
-
+        this.paintCursor();
+    }
+    paintCursor() {
+        ctx.beginPath();
+        ctx.arc(input.mouse.x, input.mouse.y, 2.5, 2 * Math.PI, 0);
+        ctx.fillStyle = 'yellow';
+        ctx.fill();
         ctx.beginPath();
         ctx.arc(input.mouse.x, input.mouse.y, 2, 2 * Math.PI, 0);
         ctx.fillStyle = 'red';
         ctx.fill();
-
-    }
-    paintGround() {
-        for (let i = 0; i < 16; i++) {
-            for (let j = 0; j < 9; j++) {
-                ctx.beginPath();
-                ctx.lineWidth = 0;
-                ctx.fillStyle = (i + j) % 2 == 0 ? "#509060" : "#509360";
-                ctx.rect(i * 32, j * 32, 32, 32);
-                ctx.fill();
-            }
-        }
     }
     getNewWorldMsg() {
         return {
@@ -685,14 +688,14 @@ class CameraOffset {
         this.topX = Math.floor(this.localPlayer.x - CanvasWidth / 2);
         this.topY = Math.floor(this.localPlayer.y - CanvasHeight / 2);
     }
-    toCanvasX(x){
+    toCanvasX(x) {
         return Math.floor(x - this.topX)
     }
-    toCanvasY(y){
+    toCanvasY(y) {
         return Math.floor(y - this.topY)
     }
-    toWorldCoord(canvasPoint){
-         return {
+    toWorldCoord(canvasPoint) {
+        return {
             x: canvasPoint.x + this.topX,
             y: canvasPoint.y + this.topY,
         };
