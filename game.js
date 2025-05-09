@@ -274,6 +274,7 @@ class Sounds {
             return new Audio("sound/" + name + ".wav");
         }
         this.lazer = loadSound("lazer");
+        this.shotgun2b = loadSound("shotgun-2b");
     }
 }
 const sounds = new Sounds();
@@ -567,7 +568,7 @@ class ShotgunAttack {
     constructor() {
         this.projectile = new FriendlyProjectile();
         this.projectile.color = '#44f';
-        this.attackPeriod = 20;
+        this.attackPeriod = 30 * 5;
         this.lastAttackTick = -9999;
     }
     tryTrigger(player, mouseCoord, world) {
@@ -585,7 +586,7 @@ class ShotgunAttack {
             };
             world.friendlyProjectiles.push(new ProjectileAnim(this.projectile, from, target, 32 * 3, 10));
         }
-        sounds.lazer.play();
+        sounds.shotgun2b.play();
     }
 }
 class FriendlyProjectile {
