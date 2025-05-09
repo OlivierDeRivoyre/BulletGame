@@ -458,7 +458,7 @@ class ActionBar {
         this.basicAttack = allSpells.basicAttack;
         this.spells[0] = allSpells.shotgun;
         this.spells[1] = allSpells.curseGround;
-        this.spells[2] = allSpells.shotgun3;
+        this.spells[2] = allSpells.rootingProjectile;
         this.spells[3] = allSpells.shotgun4;
         this.spells[4] = allSpells.noSpell;
         this.topX = 400;
@@ -629,6 +629,10 @@ class World {
         this.friendlyProjectiles = [];
         this.dangerousProjectiles = [];
         this.tick = 0;
+    }
+    addProjectile(anim, from){
+        this.friendlyProjectiles.push(anim);
+        this.friendlyProjectiles.sort((a, b) => a.zIndex - b.zIndex);
     }
     update() {
         this.tick++;
