@@ -2,6 +2,11 @@ const ravenTileSet = loadImg("RavenFantasyIcons32");
 function getRavenSprite(i, j) {
     return new SimpleSprite(ravenTileSet, i * 32, j * 32, 32, 32);
 }
+const shikashiTileSet = loadImg("Shikashi");
+function getShikashiTile(i, j) {
+    return new SimpleSprite(shikashiTileSet, i * 32, j * 32, 32, 32);
+}
+const emptySprite = getShikashiTile(10,1);
 class Sounds {
     constructor() {
         function loadSound(name) {
@@ -94,9 +99,17 @@ class ShotgunAttack {
         sounds.shotgun2b.play();
     }
 }
+class NoSpell {
+    constructor() {
+        this.sprite = emptySprite;
+    }
+    tryTrigger(player, mouseCoord, world) {
+    }
+}
 
 class AllSpells {
     constructor() {
+        this.noSpell = new NoSpell();
         this.basicAttack = new BasicAttack();
         this.shotgun = new ShotgunAttack();
         this.shotgun2 = new ShotgunAttack();

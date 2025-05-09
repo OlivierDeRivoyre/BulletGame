@@ -20,7 +20,6 @@ class Input {
             s2: false,
             s3: false,
             s4: false,
-            s5: false,
         };
         this.mouse = { x: 0, y: 0 };
         this.mouseClicked = false;
@@ -367,8 +366,6 @@ class Player {
         this.inputX = 0;
         this.inputY = 0;
         this.sprite = getDungeonTileSetHeroSprite(0);
-        this.primaryAttack = new BasicAttack();
-        this.secondaryAttack = new ShotgunAttack();
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -408,12 +405,6 @@ class Player {
             this.inputY = 0;
             this.vy = 0;
             changed = true;
-        }
-        if (input.mouseClicked) {
-            this.primaryAttack.tryTrigger(this, world.camera.toWorldCoord(input.mouse), world);
-        }
-        if (input.mouse2Clicked) {
-            this.secondaryAttack.tryTrigger(this, world.camera.toWorldCoord(input.mouse), world);
         }
         return changed;
     }
@@ -466,16 +457,33 @@ class ActionBar {
         this.spells = new Array(ActionBar.MaxSpells);
         this.basicAttack = allSpells.basicAttack;
         this.spells[0] = allSpells.shotgun;
-        this.spells[1] = allSpells.shotgun;
-        this.spells[2] = allSpells.shotgun2;
-        this.spells[3] = allSpells.shotgun3;
-        this.spells[4] = allSpells.basicAttack;
+        this.spells[1] = allSpells.shotgun2;
+        this.spells[2] = allSpells.shotgun3;
+        this.spells[3] = allSpells.shotgun4;
+        this.spells[4] = allSpells.noSpell;
         this.topX = 400;
         this.topY = CanvasHeight - 38;
         this.shortcuts = ['M2', 'Q', 'R', 'T', 'F'];
     }
-    update() {
-
+    update(input, world) {
+        if (input.mouseClicked) {
+            this.basicAttack.tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+        }
+        else if (input.mouse2Clicked) {
+            this.spells[0].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+        }
+        else if (input.keysPressed.s1) {
+            this.spells[1].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+        }
+        else if (input.keysPressed.s2) {
+            this.spells[2].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+        }
+        else if (input.keysPressed.s3) {
+            this.spells[3].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+        }
+        else if (input.keysPressed.s4) {
+            this.spells[4].tryTrigger(this.player, world.camera.toWorldCoord(input.mouse), world);
+        }
     }
     paint() {
         ctx.fillStyle = '#222';
@@ -490,8 +498,6 @@ class ActionBar {
             this.spells[i].sprite.paintScale(buttonX, this.topY + 2, 32, 32);
             ctx.fillStyle = "white";
             ctx.font = "12px Consolas";
-            // let textPath = ctx.outlineText(this.shortcuts[i])
-            //ctx.fill(textPath.offset(buttonX + 2, this.topY + 10))
             ctx.textRendering = "geometricPrecision";
             ctx.fillText(this.shortcuts[i], buttonX + 2, this.topY + 32);
         }
@@ -647,7 +653,7 @@ class World {
             }
         }
         this.level.update();
-        this.actionBar.update();
+        this.actionBar.update(input, this);
         const updates = [];
 
         return updates;
