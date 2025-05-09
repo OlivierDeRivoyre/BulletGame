@@ -30,6 +30,7 @@ class Input {
     }
 
     keyPressed(pressed, event) {
+        //console.log('keyPressed ' + event.code + '  ' + pressed)
         if (event.keyCode == 37 || event.code == 'KeyA') {
             this.keysPressed.left = pressed;
         } else if (event.keyCode == 39 || event.code == 'KeyD') {
@@ -487,10 +488,10 @@ class ActionBar {
         if (input.mouseClicked) {
             this.tryTrigger(this.basicAttack);
         }
-        else if (input.mouse2Clicked) {
+        if (input.mouse2Clicked) {
             this.tryTrigger(this.spells[4]);
         }
-        else if (input.keysPressed.s1) {
+        if (input.keysPressed.s1) {
             this.tryTrigger(this.spells[0]);
         }
         else if (input.keysPressed.s2) {

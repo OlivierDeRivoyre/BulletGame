@@ -14,6 +14,9 @@ class Sounds {
         }
         this.lazer = loadSound("lazer");
         this.shotgun2b = loadSound("shotgun-2b");
+        this.magicMissile = loadSound("magicMissile");
+        this.bubble = loadSound("bubble");
+        this.houseKick = loadSound("houseKick");
     }
 }
 const sounds = new Sounds();
@@ -168,6 +171,7 @@ class ThrowProjectileSpell {
         this.cooldown = 0.7;
         this.sprite = getRavenSprite(0, 93);
         this.endFunc = null;
+        this.sound = sounds.lazer;
     }
     trigger(player, mouseCoord, world) {
         const anim = new ProjectileAnim(this.projectile, player.getCenterCoord(), mouseCoord);
@@ -178,7 +182,7 @@ class ThrowProjectileSpell {
             }
         }
         world.addProjectile(anim, player);
-        sounds.lazer.play();
+        this.sound.play();
         return true;
     }
 }
@@ -230,6 +234,7 @@ class ZoneSpell {
         const center = ZoneSpell.maxRangeCoord(player.getCenterCoord(), mouseCoord, this.range * 64);
         const anim = new DurationAnim(this.projectile, this.duration, center);
         world.addProjectile(anim, player);
+        sounds.magicMissile.play();
         return true;
     }
 }
@@ -245,6 +250,7 @@ class ProtectSpell {
         const anim = new DurationAnim(this, this.duration, player.getCenterCoord());
         anim.player = player;
         world.addProjectile(anim, player);
+        sounds.houseKick.play();
         return true;
     }
     paint(x, y, anim, camera) {
@@ -270,7 +276,9 @@ class AllSpells {
         return new NoSpell();
     }
     static basicAttack() {
-        return new ThrowProjectileSpell(new BulletProjectile());
+        let spell = new ThrowProjectileSpell(new BulletProjectile());
+        spell.cooldown = 0.3;
+        return spell;
     }
     static shotgun() {
         let projectile = new BulletProjectile();
@@ -283,22 +291,25 @@ class AllSpells {
     }
     static rootingProjectile() {
         const projectile = new RootingProjectile();
-        const rootingProjectile = new ThrowProjectileSpell(projectile);
-        rootingProjectile.sprite = projectile.sprite;
-        rootingProjectile.cooldown = 8;
-        return rootingProjectile;
+        const spell = new ThrowProjectileSpell(projectile);
+        spell.sprite = projectile.sprite;
+        spell.cooldown = 8;
+        spell.sound = sounds.magicMissile;
+        return spell;
     }
     static healProjectile() {
         const projectile = new HealingProjectile();
-        const rootingProjectile = new ThrowProjectileSpell(projectile);
-        rootingProjectile.cooldown = 10;
-        rootingProjectile.sprite = projectile.sprite;
-        rootingProjectile.endFunc = function (coord, player, world) {
+        const spell = new ThrowProjectileSpell(projectile);
+        spell.cooldown = 10;
+        spell.sprite = projectile.sprite;
+        spell.sound = sounds.magicMissile;
+        spell.endFunc = function (coord, player, world) {
             const healZone = new HealAreaProjectile();
             const anim = new DurationAnim(healZone, 0.2, coord);
             world.addProjectile(anim, player);
+            sounds.bubble.play();
         }
-        return rootingProjectile;
+        return spell;
     }
     static protectSpell() {
         return new ProtectSpell();
