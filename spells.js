@@ -7,6 +7,7 @@ function getShikashiTile(i, j) {
     return new SimpleSprite(shikashiTileSet, i * 32, j * 32, 32, 32);
 }
 const emptySprite = getShikashiTile(10, 1);
+const deadSprite = getShikashiTile(0, 0);
 class Sounds {
     constructor() {
         function loadSound(name) {

@@ -359,6 +359,15 @@ class DoubleSprite {
         );
         ctx.restore();
     }
+    paintRotate(x, y, angus) {
+        ctx.save();
+        ctx.translate(x + this.tWidth, y + this.tHeight);
+        ctx.rotate(angus);
+        ctx.drawImage(this.tile,
+            this.tx, this.ty, this.tWidth, this.tHeight,
+            -this.tWidth, -this.tHeight, this.tWidth * 2, this.tHeight * 2);
+        ctx.restore();
+    }
 }
 
 function square(x) {
@@ -393,29 +402,29 @@ class Player {
         } else if (input.keysPressed.right) {
             if (this.inputX != 1) {
                 this.inputX = 1;
-              //  this.vx = 0;
+                //  this.vx = 0;
                 changed = true;
             }
         } else if (this.inputX != 0) {
             this.inputX = 0;
-          //  this.vx = 0;
+            //  this.vx = 0;
             changed = true;
         }
         if (input.keysPressed.up) {
             if (this.inputY != -1) {
                 this.inputY = -1;
-              //  this.vy = 0;
+                //  this.vy = 0;
                 changed = true;
             }
         } else if (input.keysPressed.down) {
             if (this.inputY != 1) {
                 this.inputY = 1;
-              //  this.vy = 0;
+                //  this.vy = 0;
                 changed = true;
             }
         } else if (this.inputY != 0) {
             this.inputY = 0;
-          //  this.vy = 0;
+            //  this.vy = 0;
             changed = true;
         }
         return changed;
@@ -434,13 +443,17 @@ class Player {
             } else if (input > 0) {
                 return Math.min(newV, maxV);
             } else {
-                return Math.floor(v * 10 / 2) / 10;
+                let newV = v * 0.5;
+                if(Math.abs(newV) < 0.1){
+                    newV = 0;
+                }
+                return newV;
             }
         }
         this.vx = getNewSpeed(this.vx, this.inputX);
         this.vy = getNewSpeed(this.vy, this.inputY);
         const norm = Math.sqrt(square(this.vx) + square(this.vy));
-        if(norm > maxSpeed){
+        if (norm > maxSpeed) {
             this.vx = this.vx * maxSpeed / norm;
             this.vy = this.vy * maxSpeed / norm;
         }
@@ -664,7 +677,7 @@ class Mob {
         this.x = x;
         this.y = y;
         this.maxLife = 100;
-        this.life = 100;
+        this.life = this.maxLife;
         this.lastHitTick = -9999;
         this.lastShootTick = -9999;
     }
@@ -675,6 +688,9 @@ class Mob {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
     }
     update() {
+        if (this.life <= 0) {
+            return;
+        }
         this.brain.update();
     }
     tryShoot(target, world) {
@@ -686,6 +702,11 @@ class Mob {
         }
     }
     paint(camera) {
+        if (this.life <= 0) {
+            this.sprite.paintRotate(camera.toCanvasX(this.x), camera.toCanvasY(this.y), Math.PI / 2);            
+            deadSprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y + 10));
+            return;
+        }
         if (this.lastHitTick + 5 >= tickNumber) {
             ctx.fillStyle = 'red';
             ctx.fillRect(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.sprite.tWidth * 2, this.sprite.tHeight * 2);
@@ -693,6 +714,7 @@ class Mob {
         this.sprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), 0, false);
     }
     onHit(damage, world, projectile) {
+        this.life = Math.max(0, this.life - damage);
         this.lastHitTick = tickNumber;
         this.brain.onHit();
     }
