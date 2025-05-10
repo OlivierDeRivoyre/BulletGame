@@ -376,3 +376,35 @@ class AllSpells {
     }
 }
 const allSpells = new AllSpells();
+
+
+class MobBasicAttack {
+    constructor(projectile) {
+        this.projectile = projectile;
+        this.castingTime = 0;
+        this.cooldown = 1;       
+        this.range = projectile.range;
+    }
+    trigger(mob, target, world) {
+        const anim = new ProjectileAnim(this.projectile, mob.getCenterCoord(), target);
+        anim.targerPlayers = true;
+        anim.targerMobs = false;
+        world.addProjectile(anim, mob);        
+        return true;
+    }
+}
+
+class MobSpells {
+    constructor() {
+        this.basicAttack = MobSpells.basicAttack();
+    }
+    static basicAttack() {
+        const projectile = new BulletProjectile();
+        projectile.color = 'red';
+        projectile.speed = 10;
+        projectile.range = 7;
+        let spell = new MobBasicAttack(projectile);        
+        return spell;
+    }
+}
+const mobSpells = new MobSpells();

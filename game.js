@@ -595,11 +595,11 @@ class AggroMobBrain {
         if (this.targetPlayer != null) {
             const distanceToPlayer = distanceSquare(this.mob, this.targetPlayer);
             if (distanceToPlayer < square((this.fireRange + 3) * 64)) {
-                this.mob.tryShoot(this.targetPlayer, this.world);
+                this.mob.tryShoot(this.targetPlayer.getCenterCoord(), this.world);
             }
             if (this.targetCoord != null && tickNumber < this.walkAroundPlayerUntil) {
                 destCoord = this.targetCoord;
-            } else if (distanceToPlayer < square(64*1.5)) {
+            } else if (distanceToPlayer < square(64 * 1.5)) {
                 this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.world);
                 this.walkAroundPlayerUntil = tickNumber + 30 * 1;
                 destCoord = this.targetCoord;
@@ -624,7 +624,7 @@ class AggroMobBrain {
     }
     onHit() {
         if (this.targetPlayer == null) {
-            this.targetPlayer = this.world.findNearestPlayer(this.mob);          
+            this.targetPlayer = this.world.findNearestPlayer(this.mob);
         }
     }
     static getRandomTargetCoord(mob, initialCoord, world) {
@@ -652,14 +652,16 @@ class AggroMobBrain {
 
 
 class Mob {
-    constructor(sprite, brain, x, y) {
+    constructor(sprite, brain, spell, x, y) {
         this.sprite = sprite;
         this.brain = brain;
+        this.spell = spell;
         this.x = x;
         this.y = y;
         this.maxLife = 100;
         this.life = 100;
-        this.lastHitTick = -9999
+        this.lastHitTick = -9999;
+        this.lastShootTick = -9999;
     }
     init(world, i) {
         this.brain.init(this, world, i);
@@ -671,7 +673,12 @@ class Mob {
         this.brain.update();
     }
     tryShoot(target, world) {
-
+        if (tickNumber < this.lastShootTick + this.spell.cooldown * 30) {
+            return;
+        }
+        if (this.spell.trigger(this, target, world)) {
+            this.lastShootTick = tickNumber;
+        }
     }
     paint(camera) {
         if (this.lastHitTick + 5 >= tickNumber) {
@@ -769,7 +776,8 @@ class Level {
     constructor() {
         this.map = new Map();
         this.mobs = [];
-        this.mobs.push(new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(), 10 * 32, 5 * 32));
+        this.mobs.push(new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(),
+            mobSpells.basicAttack, 10 * 32, 5 * 32));
     }
 }
 let tickNumber = 0;
@@ -793,7 +801,7 @@ class World {
             this.mobs[i].init(this, i);
         }
     }
-    addProjectile(anim, from) {
+    addProjectile(anim) {
         this.projectiles.push(anim);
         this.annimAdded = true;
     }
