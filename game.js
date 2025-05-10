@@ -705,25 +705,36 @@ class AggroMobBrain {
         }
     }
     static getRandomTargetCoord(mob, initialCoord, world) {
-        mob.seed = getNextRand(mob.seed);
-        const angus = Math.PI * 2 * (mob.seed % 8) / 8;
-        const dx = Math.sign(Math.floor(Math.cos(angus) * 10));
-        const dy = Math.sign(Math.floor(Math.sin(angus) * 10));
-        let nextCoord = {
-            x: mob.x + dx * 64,
-            y: mob.y + dy * 64,
-        };
-        const dist1 = distanceSquare(nextCoord, initialCoord);
-        if (dist1 > 64 * 64 * 4 * 4) {
-            const otherCoord = {
-                x: mob.x - dx * 64,
-                y: mob.y - dy * 64,
+
+        function getNextCoord(quarter) {
+            const angus = Math.PI * 2 * (quarter % 8) / 8;
+            const dx = Math.sign(Math.floor(Math.cos(angus) * 10));
+            const dy = Math.sign(Math.floor(Math.sin(angus) * 10));
+            let nextCoord = {
+                x: mob.x + dx * 64,
+                y: mob.y + dy * 64,
             };
-            if (distanceSquare(otherCoord, initialCoord) < dist1) {
-                nextCoord = otherCoord;
+            const dist1 = distanceSquare(nextCoord, initialCoord);
+            if (dist1 > 64 * 64 * 4 * 4) {
+                const otherCoord = {
+                    x: mob.x - dx * 64,
+                    y: mob.y - dy * 64,
+                };
+                if (distanceSquare(otherCoord, initialCoord) < dist1) {
+                    nextCoord = otherCoord;
+                }
+            }
+            return nextCoord;
+        }
+        mob.seed = getNextRand(mob.seed);
+        for (let i = 0; i < 8; i++) {
+            const nextCoord = getNextCoord(mob.seed + i);
+            const targetCell = world.map.getCell(nextCoord.x, nextCoord.y);
+            if (targetCell.canWalk) {
+                return nextCoord;
             }
         }
-        return nextCoord;
+        return initialCoord;
     }
 }
 
@@ -835,8 +846,10 @@ class CellSpriteFactory {
 }
 const cellSpriteFactory = new CellSpriteFactory();
 class Cell {
-    constructor(cellSprites) {
+    constructor(cellSprites, prop) {
         this.cellSprites = cellSprites;
+        prop = prop || {};
+        this.canWalk = prop.canWalk === undefined ? true : prop.canWalk;
     }
     paint(x, y) {
         for (let s of this.cellSprites) {
@@ -847,10 +860,10 @@ class Cell {
 
 class Map {
     constructor() {
-        this.borderCell = new Cell([cellSpriteFactory.water]);
+        this.borderCell = new Cell([cellSpriteFactory.water], { canWalk: false });
         this.cells = new Array(10);
         for (var j = 0; j < this.cells.length; j++) {
-            this.cells[j] = new Array(50);
+            this.cells[j] = new Array(30);
             for (var i = 0; i < this.cells[j].length; i++) {
                 const grass = (i + j) % 2 == 0 ? cellSpriteFactory.grass1 : cellSpriteFactory.grass2;
                 this.cells[j][i] = new Cell([grass]);
@@ -888,8 +901,30 @@ class Level {
     constructor() {
         this.map = new Map();
         this.mobs = [];
-        this.mobs.push(new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(),
-            mobSpells.basicAttack, 10 * 32, 5 * 32));
+        this.mobs.push(Level.createMob1At({ i: 1, j: 1 }));      
+        this.mobs.push(Level.createMob1At({ i: 5, j: 4 }));
+
+        this.mobs.push(Level.createMob1At({ i: 12, j: 2 }));
+        this.mobs.push(Level.createMob1At({ i: 12, j: 4 }));
+        this.mobs.push(Level.createMob1At({ i: 12, j: 6 }));
+
+        this.mobs.push(Level.createMob1At({ i: 22, j: 2 }));
+        this.mobs.push(Level.createMob1At({ i: 22, j: 4 }));
+        this.mobs.push(Level.createMob1At({ i: 22, j: 6 }));
+        this.mobs.push(Level.createMob1At({ i: 24, j: 3 }));
+        this.mobs.push(Level.createMob1At({ i: 24, j: 5 }));
+        this.mobs.push(Level.createMob1At({ i: 24, j: 7 }));
+        this.mobs.push(Level.createMob1At({ i: 26, j: 3 }));
+        this.mobs.push(Level.createMob1At({ i: 26, j: 5 }));
+        this.mobs.push(Level.createMob1At({ i: 26, j: 7 }));
+        this.mobs.push(Level.createMob1At({ i: 28, j: 3 }));
+        this.mobs.push(Level.createMob1At({ i: 28, j: 5 }));
+        this.mobs.push(Level.createMob1At({ i: 28, j: 7 }));
+    }
+    static createMob1At(cell) {
+        const mob = new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(),
+            mobSpells.basicAttack, cell.i * 64, cell.j * 64);
+        return mob;
     }
 }
 let tickNumber = 0;

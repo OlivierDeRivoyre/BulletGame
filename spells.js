@@ -112,9 +112,9 @@ class HealAreaProjectile {
 class CircleAreaProjectile {
     constructor() {
         this.sprite = getRavenSprite(4, 48);
-        this.radius = 1.5;
+        this.radius = 1.0;
         this.zIndex = -10;
-        this.damage = 1;
+        this.damage = 5;
         this.periodSec = 0.5;
     }
     paint(x, y, anim) {
