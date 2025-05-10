@@ -376,6 +376,8 @@ class Player {
         this.sprite = getDungeonTileSetHeroSprite(0);
         this.lastHitTick = -999;
         this.lastHealTick = -999;
+        this.maxLife = 100;
+        this.life = this.maxLife;
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -561,10 +563,94 @@ class ActionBar {
         ctx.fillText(this.shortcuts[i], buttonX + 2, buttonY + 30);
     }
 }
-
-class AggroMobBrain {
-
+function getNextRand(previous) {
+    return ((previous + 11) * 16807) % 2147483647;
 }
+function distanceSquare(coord1, coord2) {
+    return square(coord1.x - coord2.x) + square(coord1.y - coord2.y);
+}
+function computeDistance(coord1, coord2) {
+    return Math.sqrt(distanceSquare(coord1, coord2));
+}
+class AggroMobBrain {
+    init(mob, world, i) {
+        this.mob = mob;
+        this.world = world;
+        this.intialCoord = { x: this.mob.x, y: this.mob.y };
+        this.targetCoord = null;
+        this.targetPlayer = null;
+        this.mob.seed = i;
+        this.fireRange = 6;
+        this.speed = 3;
+        this.walkAroundPlayerUntil = -9999;
+    }
+    update() {
+        if (this.targetPlayer != null && this.targetPlayer.life <= 0) {
+            this.targetPlayer = this.world.findNearestPlayer(this.mob);
+        }
+        if (this.targetCoord != null && distanceSquare(this.mob, this.targetCoord) < square(this.speed)) {
+            this.targetCoord = null;
+        }
+        let destCoord;
+        if (this.targetPlayer != null) {
+            const distanceToPlayer = distanceSquare(this.mob, this.targetPlayer);
+            if (distanceToPlayer < square((this.fireRange + 3) * 64)) {
+                this.mob.tryShoot(this.targetPlayer, this.world);
+            }
+            if (this.targetCoord != null && tickNumber < this.walkAroundPlayerUntil) {
+                destCoord = this.targetCoord;
+            } else if (distanceToPlayer < square(64*1.5)) {
+                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.world);
+                this.walkAroundPlayerUntil = tickNumber + 30 * 1;
+                destCoord = this.targetCoord;
+            } else {
+                destCoord = this.targetPlayer;
+                this.targetCoord = null;
+            }
+        } else {
+            if (this.targetCoord == null) {
+                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.world);
+            }
+            destCoord = this.targetCoord;
+        }
+        const d = computeDistance(this.mob, destCoord);
+        if (d < 0.01) {
+            return;
+        }
+        const vx = this.speed * (destCoord.x - this.mob.x) / d;
+        const vy = this.speed * (destCoord.y - this.mob.y) / d;
+        this.mob.x += vx;
+        this.mob.y += vy;
+    }
+    onHit() {
+        if (this.targetPlayer == null) {
+            this.targetPlayer = this.world.findNearestPlayer(this.mob);          
+        }
+    }
+    static getRandomTargetCoord(mob, initialCoord, world) {
+        mob.seed = getNextRand(mob.seed);
+        const angus = Math.PI * 2 * (mob.seed % 8) / 8;
+        const dx = Math.sign(Math.floor(Math.cos(angus) * 10));
+        const dy = Math.sign(Math.floor(Math.sin(angus) * 10));
+        let nextCoord = {
+            x: mob.x + dx * 64,
+            y: mob.y + dy * 64,
+        };
+        const dist1 = distanceSquare(nextCoord, initialCoord);
+        if (dist1 > 64 * 64 * 4 * 4) {
+            const otherCoord = {
+                x: mob.x - dx * 64,
+                y: mob.y - dy * 64,
+            };
+            if (distanceSquare(otherCoord, initialCoord) < dist1) {
+                nextCoord = otherCoord;
+            }
+        }
+        return nextCoord;
+    }
+}
+
+
 class Mob {
     constructor(sprite, brain, x, y) {
         this.sprite = sprite;
@@ -575,10 +661,16 @@ class Mob {
         this.life = 100;
         this.lastHitTick = -9999
     }
+    init(world, i) {
+        this.brain.init(this, world, i);
+    }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
     }
     update() {
+        this.brain.update();
+    }
+    tryShoot(target, world) {
 
     }
     paint(camera) {
@@ -590,6 +682,7 @@ class Mob {
     }
     onHit(damage, world, projectile) {
         this.lastHitTick = tickNumber;
+        this.brain.onHit();
     }
     onHeal(heal, world, projectile) {
     }
@@ -696,6 +789,9 @@ class World {
         this.mobs = this.level.mobs;
         this.projectiles = [];
         this.annimAdded = false;
+        for (let i = 0; i < this.mobs.length; i++) {
+            this.mobs[i].init(this, i);
+        }
     }
     addProjectile(anim, from) {
         this.projectiles.push(anim);
@@ -717,7 +813,7 @@ class World {
             }
         }
         for (let m of this.mobs) {
-            //m.update(this);
+            m.update(this);
         }
         this.checkBulletsHitOnAll()
         this.actionBar.update(input, this);
@@ -749,7 +845,20 @@ class World {
         }
         return true;
     }
-
+    findNearestPlayer(coord) {
+        let minD = 999999999;
+        let player = null;
+        for (let p of this.players) {
+            if (p.life > 0) {
+                const d = distanceSquare(p, coord);
+                if (d < minD) {
+                    minD = d;
+                    player = p;
+                }
+            }
+        }
+        return player;
+    }
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.level.map.paint(this.camera);
