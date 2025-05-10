@@ -401,7 +401,7 @@ class MobSpells {
     static basicAttack() {
         const projectile = new BulletProjectile();
         projectile.color = 'red';
-        projectile.speed = 10;
+        projectile.speed = 5;
         projectile.range = 7;
         let spell = new MobBasicAttack(projectile);        
         return spell;
