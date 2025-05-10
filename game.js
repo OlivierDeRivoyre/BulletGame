@@ -76,7 +76,7 @@ const input = new Input();
 const params = new URLSearchParams(window.location.search);
 const server = params.get("server");
 const isServer = !server;
-let lastPeerId = localStorage.getItem("lastPeerId");
+let lastPeerId = localStorage.getItem("bulletLastPeerId");
 if (!isServer || !lastPeerId) {
     lastPeerId = undefined;
 }
@@ -117,7 +117,7 @@ async function initPeer() {
             if (!firstOpen) {
                 return;
             }
-            localStorage.setItem("lastPeerId", peer.id);
+            localStorage.setItem("bulletLastPeerId", peer.id);
             document.getElementById("myId").innerText = "Other player can join you at: "
                 + window.location.origin + window.location.pathname + "?server=" + peer.id;
             const server = new Server();
