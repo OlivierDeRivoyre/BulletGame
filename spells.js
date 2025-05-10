@@ -300,24 +300,35 @@ class ProtectSpell {
     constructor() {
         this.sprite = getRavenSprite(2, 113);;
         this.castingTime = 0;
-        this.cooldown = 20;
+        this.cooldown = 8;
         this.duration = 1.5;
         this.zIndex = -10;
     }
     trigger(player, mouseCoord, world) {
-        const anim = new DurationAnim(this, this.duration, player.getCenterCoord());
-        anim.player = player;
-        anim.targerMobs = false;
-        anim.targerPlayers = false;
-        world.addProjectile(anim, player);
+        const buff = new Buff(BuffId.shield, this.sprite, this.duration);
+        buff.paintFunc = function (camera) {
+            const coord = player.getCenterCoord();
+            const size = 64;
+            this.sprite.paintScale(camera.toCanvasX(coord.x) - size / 2, camera.toCanvasY(coord.y) - size / 2,
+                size, size);
+        };
+        player.addBuff(buff);
         sounds.houseKick.play();
         return true;
     }
-    paint(x, y, anim, camera) {
-        const coord = anim.player.getCenterCoord();
-        const size = 64;
-        this.sprite.paintScale(camera.toCanvasX(coord.x) - size / 2, camera.toCanvasY(coord.y) - size / 2,
-            size, size);
+}
+class BuffId {
+    static shield = 'shield';
+    static root = 'root';
+    static slow = 'slow';
+}
+class Buff {
+    constructor(id, sprite, duration) {
+        this.id = id;
+        this.sprite = sprite;
+        this.duration = duration;
+        this.value = null;
+        this.paintFunc = null;
     }
 }
 
@@ -383,14 +394,14 @@ class MobBasicAttack {
     constructor(projectile) {
         this.projectile = projectile;
         this.castingTime = 0;
-        this.cooldown = 1;       
+        this.cooldown = 1;
         this.range = projectile.range;
     }
     trigger(mob, target, world) {
         const anim = new ProjectileAnim(this.projectile, mob.getCenterCoord(), target);
         anim.targerPlayers = true;
         anim.targerMobs = false;
-        world.addProjectile(anim, mob);        
+        world.addProjectile(anim, mob);
         return true;
     }
 }
@@ -404,7 +415,7 @@ class MobSpells {
         projectile.color = 'red';
         projectile.speed = 5;
         projectile.range = 7;
-        let spell = new MobBasicAttack(projectile);        
+        let spell = new MobBasicAttack(projectile);
         return spell;
     }
 }

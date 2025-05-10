@@ -387,6 +387,7 @@ class Player {
         this.lastHealTick = -999;
         this.maxLife = 100;
         this.life = this.maxLife;
+        this.buffs = [];
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -433,6 +434,11 @@ class Player {
         return changed;
     }
     update() {
+        for (let i = this.buffs.length - 1; i >= 0; i--) {
+            if (tickNumber > this.buffs[i].endTick) {
+                this.buffs.splice(i, 1);
+            }
+        }
         if (this.life <= 0) {
             return;
         }
@@ -483,6 +489,11 @@ class Player {
             ctx.fillStyle = 'green';
             ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
+        for (let buff of this.buffs) {
+            if (buff.paintFunc) {
+                buff.paintFunc(camera);
+            }
+        }
         this.sprite.paint(canvasX, canvasY, 0, false);
         this.paintLifebar(canvasX, canvasY)
     }
@@ -508,12 +519,29 @@ class Player {
         }
     }
     onHit(damage, world, projectile) {
+        for (let i = 0; i < this.buffs.length; i++) {
+            if (this.buffs[i].id == BuffId.shield) {
+                this.buffs.splice(i, 1);
+                sounds.bubble.play();
+                return;
+            }
+        }
         this.lastHitTick = tickNumber;
         this.life = Math.max(0, this.life - damage);
     }
     onHeal(heal, world, projectile) {
         this.lastHealTick = tickNumber;
         this.life = Math.min(this.maxLife, this.life + heal);
+    }
+    addBuff(buff) {
+        buff.endTick = tickNumber + buff.duration * 30;
+        for (let i = 0; i < this.buffs.length; i++) {
+            if (this.buffs[i].id == buff.id) {
+                this.buffs[i] = this.id;
+                return;
+            }
+        }
+        this.buffs.push(buff)
     }
 }
 
