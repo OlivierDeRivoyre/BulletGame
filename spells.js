@@ -122,7 +122,7 @@ class CircleAreaProjectile {
     }
     checkHit(projectile, character, world) {
         const period = Math.ceil(30 * this.periodSec);
-        if (projectile.tick % period != 0) {
+        if (projectile.tick % period != 1) {
             return true;
         }
         if (!ProjectileAnim.isHitting(character, projectile, this.radius * 64)) {
