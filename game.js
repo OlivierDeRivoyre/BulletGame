@@ -393,6 +393,9 @@ class Player {
     }
     updateLocalPlayer(input, world) {
         let changed = false;
+        if (this.life <= 0) {
+            return false;
+        }
         if (input.keysPressed.left) {
             if (this.inputX != -1) {
                 this.inputX = -1;
@@ -430,6 +433,9 @@ class Player {
         return changed;
     }
     update() {
+        if (this.life <= 0) {
+            return;
+        }
         const maxSpeed = 4;
         function getNewSpeed(v, input) {
             const ratio = Math.abs(v) < maxSpeed * 0.5 ? 1
@@ -444,7 +450,7 @@ class Player {
                 return Math.min(newV, maxV);
             } else {
                 let newV = v * 0.5;
-                if(Math.abs(newV) < 0.1){
+                if (Math.abs(newV) < 0.1) {
                     newV = 0;
                 }
                 return newV;
@@ -462,15 +468,30 @@ class Player {
     }
 
     paint(camera) {
+        const canvasX = camera.toCanvasX(this.x);
+        const canvasY = camera.toCanvasY(this.y);
+        if (this.life <= 0) {
+            this.sprite.paintRotate(canvasX, canvasY, Math.PI / 2);
+            deadSprite.paint(canvasX, canvasY + 10);
+            return;
+        }
         if (this.lastHitTick + 5 >= tickNumber) {
             ctx.fillStyle = 'red';
-            ctx.fillRect(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.sprite.tWidth * 2, this.sprite.tHeight * 2);
+            ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
         if (this.lastHealTick + 5 >= tickNumber) {
             ctx.fillStyle = 'green';
-            ctx.fillRect(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.sprite.tWidth * 2, this.sprite.tHeight * 2);
+            ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
-        this.sprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), 0, false);
+        this.sprite.paint(canvasX, canvasY, 0, false);
+        this.paintLifebar(canvasX, canvasY)
+    }
+    paintLifebar(canvasX, canvasY) {
+        let top = canvasY + this.sprite.tHeight + 12;
+        ctx.fillStyle = "black";
+        ctx.fillRect(canvasX, top + 10, this.sprite.tWidth * 2, 4);
+        ctx.fillStyle = "green";
+        ctx.fillRect(canvasX, top + 10, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
     }
     getMsg() {
         return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
@@ -488,9 +509,11 @@ class Player {
     }
     onHit(damage, world, projectile) {
         this.lastHitTick = tickNumber;
+        this.life = Math.max(0, this.life - damage);
     }
     onHeal(heal, world, projectile) {
         this.lastHealTick = tickNumber;
+        this.life = Math.min(this.maxLife, this.life + heal);
     }
 }
 
@@ -519,6 +542,9 @@ class ActionBar {
         }
     }
     update(input) {
+        if (this.player.life <= 0) {
+            return false;
+        }
         if (input.mouseClicked) {
             this.tryTrigger(this.basicAttack);
         }
@@ -702,16 +728,26 @@ class Mob {
         }
     }
     paint(camera) {
+        const canvasX = camera.toCanvasX(this.x);
+        const canvasY = camera.toCanvasY(this.y);
         if (this.life <= 0) {
-            this.sprite.paintRotate(camera.toCanvasX(this.x), camera.toCanvasY(this.y), Math.PI / 2);            
-            deadSprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y + 10));
+            this.sprite.paintRotate(canvasX, canvasY, Math.PI / 2);
+            deadSprite.paint(canvasX, canvasY + 10);
             return;
         }
         if (this.lastHitTick + 5 >= tickNumber) {
             ctx.fillStyle = 'red';
-            ctx.fillRect(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.sprite.tWidth * 2, this.sprite.tHeight * 2);
+            ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
-        this.sprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), 0, false);
+        this.sprite.paint(canvasX, canvasY, 0, false);
+        this.paintLifebar(canvasX, canvasY);
+    }
+    paintLifebar(canvasX, canvasY) {
+        let top = canvasY + this.sprite.tHeight + 12;
+        ctx.fillStyle = "black";
+        ctx.fillRect(canvasX, top + 10, this.sprite.tWidth * 2, 4);
+        ctx.fillStyle = "green";
+        ctx.fillRect(canvasX, top + 10, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
     }
     onHit(damage, world, projectile) {
         this.life = Math.max(0, this.life - damage);
