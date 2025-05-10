@@ -387,42 +387,42 @@ class Player {
         if (input.keysPressed.left) {
             if (this.inputX != -1) {
                 this.inputX = -1;
-                this.vx = 0;
+                //this.vx = 0;
                 changed = true;
             }
         } else if (input.keysPressed.right) {
             if (this.inputX != 1) {
                 this.inputX = 1;
-                this.vx = 0;
+              //  this.vx = 0;
                 changed = true;
             }
         } else if (this.inputX != 0) {
             this.inputX = 0;
-            this.vx = 0;
+          //  this.vx = 0;
             changed = true;
         }
         if (input.keysPressed.up) {
             if (this.inputY != -1) {
                 this.inputY = -1;
-                this.vy = 0;
+              //  this.vy = 0;
                 changed = true;
             }
         } else if (input.keysPressed.down) {
             if (this.inputY != 1) {
                 this.inputY = 1;
-                this.vy = 0;
+              //  this.vy = 0;
                 changed = true;
             }
         } else if (this.inputY != 0) {
             this.inputY = 0;
-            this.vy = 0;
+          //  this.vy = 0;
             changed = true;
         }
         return changed;
     }
     update() {
+        const maxSpeed = 4;
         function getNewSpeed(v, input) {
-            const maxSpeed = 4;
             const ratio = Math.abs(v) < maxSpeed * 0.5 ? 1
                 : Math.abs(v) < maxSpeed * 0.8 ? 0.5
                     : 0.3;
@@ -439,6 +439,11 @@ class Player {
         }
         this.vx = getNewSpeed(this.vx, this.inputX);
         this.vy = getNewSpeed(this.vy, this.inputY);
+        const norm = Math.sqrt(square(this.vx) + square(this.vy));
+        if(norm > maxSpeed){
+            this.vx = this.vx * maxSpeed / norm;
+            this.vy = this.vy * maxSpeed / norm;
+        }
         this.x += this.vx;
         this.y += this.vy;
     }
