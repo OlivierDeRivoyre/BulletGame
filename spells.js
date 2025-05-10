@@ -30,13 +30,16 @@ class BulletProjectile {
         this.speed = 20;
         this.range = 3;
         this.zIndex = 10;
-    }
-    onHit(mob) {
-        return false;
+        this.radius = 3;
+        this.damage = 5;
     }
     paint(x, y) {
         ctx.fillStyle = this.color;
-        ctx.fillRect(x, y, 6, 6);
+        ctx.fillRect(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius);
+    }
+    hit(character, world) {
+        character.onHit(this.damage, world, this);
+        return false;
     }
 }
 class RootingProjectile {
@@ -47,13 +50,15 @@ class RootingProjectile {
         this.range = 5;
         this.radius = 12;
         this.zIndex = 20;
-    }
-    onHit(mob) {
-        return false;
+        this.damage = 1;
     }
     paint(x, y, anim) {
         this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius,
             anim.angus + this.spriteCorrectAngus);
+    }
+    hit(character, world) {
+        character.onHit(this.damage, world, this);
+        return false;
     }
 }
 class HealingProjectile {
@@ -63,13 +68,16 @@ class HealingProjectile {
         this.speed = 18;
         this.radius = 12;
         this.zIndex = 20;
+        this.damage = 5;
     }
-    onHit(mob) {
-        return false;
-    }
+
     paint(x, y, anim) {
-        const angus = anim.tick * -0.25;
+        const angus = tickNumber * -0.25;
         this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius, angus);
+    }
+    hit(character, world) {
+        character.onHit(this.damage, world, this);
+        return false;
     }
 }
 class HealAreaProjectile {
@@ -77,9 +85,7 @@ class HealAreaProjectile {
         this.sprite = getRavenSprite(8, 60);
         this.radius = 2;
         this.zIndex = -10;
-    }
-    onHit(mob) {
-        return true;
+        this.heal = 20;
     }
     paint(x, y, anim) {
         const r = this.radius * 64 * (anim.tick + 1) / anim.maxTick;
@@ -89,23 +95,54 @@ class HealAreaProjectile {
             this.sprite.paintScale(x + r * Math.cos(angus), y + r * Math.sin(angus), 12, 12);
         }
     }
+    checkHit(projectile, character, world) {
+        if (projectile.tick != 1) {
+            return true;
+        }
+        if (!ProjectileAnim.isHitting(character, projectile, this.radius * 64)) {
+            return true;
+        }
+        character.onHeal(this.heal, world, this);
+        return true;
+    }
 }
 class CircleAreaProjectile {
     constructor() {
         this.sprite = getRavenSprite(4, 48);
         this.radius = 1.5;
         this.zIndex = -10;
-    }
-    onHit(mob) {
-        return true;
+        this.damage = 1;
+        this.periodSec = 0.5;
     }
     paint(x, y, anim) {
         const pxRadius = this.radius * 64;
-        const angus = anim.tick * 0.01;
+        const angus = tickNumber * 0.01;
+        //this.sprite.paintScale(x - pxRadius, y - pxRadius, pxRadius * 2, pxRadius * 2, angus);
         this.sprite.paintRotate(x - pxRadius, y - pxRadius, pxRadius * 2, pxRadius * 2, angus);
+    }
+    checkHit(projectile, character, world) {
+        const period = Math.ceil(30 * this.periodSec);
+        if (projectile.tick % period != 0) {
+            return true;
+        }
+        if (!ProjectileAnim.isHitting(character, projectile, this.radius * 64)) {
+            return true;
+        }
+        return this.hit(character, world);
+    }
+    hit(character, world) {
+        character.onHit(this.damage, world, this);
+        return true;//keep alive the anim
     }
 }
 class ProjectileAnim {
+    static isHitting(character, bulletCoord, bulletRadius) {
+        const cCoord = character.getCenterCoord();
+        const cRadius = character.sprite.tWidth * 2;
+        const d = square(cCoord.x - bulletCoord.x) + square(cCoord.y - bulletCoord.y)
+        const r2 = square(cRadius + bulletRadius);
+        return d < r2;
+    }
     constructor(projectile, from, to) {
         this.projectile = projectile;
         const range = this.projectile.range * 64;
@@ -125,6 +162,8 @@ class ProjectileAnim {
         this.zIndex = this.projectile.zIndex || 10;
         this.angus = Math.atan2(this.vy, this.vx);
         this.endFunc = null;
+        this.targerPlayers = false;
+        this.targerMobs = true;
     }
     update(world) {
         this.tick++;
@@ -137,6 +176,16 @@ class ProjectileAnim {
             this.endFunc({ x: this.x, y: this.y }, world);
         }
         return false;
+    }
+    checkHit(character, world) {
+        if (!ProjectileAnim.isHitting(character, this, this.projectile.radius)) {
+            return true;
+        }
+        const alive = this.projectile.hit(character, world);
+        if (!alive && this.endFunc != null) {
+            this.endFunc({ x: this.x, y: this.y }, world);
+        }
+        return alive;
     }
     paint(camera) {
         this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this, camera);
@@ -151,10 +200,15 @@ class DurationAnim {
         this.y = coord.y;
         this.tick = 0;
         this.zIndex = this.projectile.zIndex || 10;
+        this.targerPlayers = false;
+        this.targerMobs = true;
     }
     update(world) {
         this.tick++;
         return this.tick < this.maxTick;
+    }
+    checkHit(character, world) {
+        return this.projectile.checkHit(this, character, world);
     }
     paint(camera) {
         this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this, camera);
@@ -252,6 +306,8 @@ class ProtectSpell {
     trigger(player, mouseCoord, world) {
         const anim = new DurationAnim(this, this.duration, player.getCenterCoord());
         anim.player = player;
+        anim.targerMobs = false;
+        anim.targerPlayers = false;
         world.addProjectile(anim, player);
         sounds.houseKick.play();
         return true;
@@ -265,7 +321,6 @@ class ProtectSpell {
 }
 
 class AllSpells {
-
     constructor() {
         this.noSpell = AllSpells.noSpell();
         this.basicAttack = AllSpells.basicAttack();
@@ -309,6 +364,8 @@ class AllSpells {
         spell.endFunc = function (coord, player, world) {
             const healZone = new HealAreaProjectile();
             const anim = new DurationAnim(healZone, 0.2, coord);
+            anim.targerMobs = false;
+            anim.targerPlayers = true;
             world.addProjectile(anim, player);
             sounds.bubble.play();
         }

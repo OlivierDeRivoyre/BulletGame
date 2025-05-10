@@ -149,7 +149,6 @@ class Server {
         const serverPlayer = new Player(0);
         this.world = new World(true, [serverPlayer], serverPlayer.id);
         screen.currentView = this.world;
-        this.tickCount = 0;
     }
     onConnect(conn) {
         if (!this.isARefreshOfExistingConnection(conn)) {
@@ -198,8 +197,8 @@ class Server {
         return changed;
     }
     runTick() {
-        this.tickCount++;
-        if (this.tickCount % 30 == 0) {
+        tickNumber++;
+        if (tickNumber % 30 == 0) {
             if (this.removeUnconnectedClients()) {
                 this.world.arrangeTeams();
                 this.sendWorld();
@@ -239,16 +238,15 @@ class Client {
         this.peer = peer;
         this.connection = null;
         this.world = null;
-        this.tickNumber = 0;
         this.lastConnectTick = -999999;
         this.refreshConnection();
     }
     refreshConnection() {
         if (this.connection == null || this.connection.peerConnection == null
-            || (this.connection.peerConnection.connectionState != 'connected' && (this.tickNumber - this.lastConnectTick) / 30 > 10)) {
+            || (this.connection.peerConnection.connectionState != 'connected' && (tickNumber - this.lastConnectTick) / 30 > 10)) {
             console.log(logName + ': connect to server');
             this.connection = this.peer.connect(server);
-            this.lastConnectTick = this.tickNumber;
+            this.lastConnectTick = tickNumber;
             const self = this;
             this.connection.on('data', function (data) {
                 self.onData(data);
@@ -256,8 +254,8 @@ class Client {
         }
     }
     runTick() {
-        this.tickNumber++;
-        if (this.tickNumber % 15 == 0) {
+        tickNumberr++;
+        if (tickNumber % 15 == 0) {
             this.refreshConnection();
         }
         if (this.world != null) {
@@ -320,7 +318,7 @@ class SimpleSprite {
     }
     paintRotate(x, y, w, h, angus) {
         ctx.save();
-        ctx.translate(x + this.tWidth / 2, y + this.tHeight / 2);
+        ctx.translate(x + w / 2, y + h / 2);
         ctx.rotate(angus);
         ctx.drawImage(this.tile,
             this.tx, this.ty, this.tWidth, this.tHeight,
@@ -376,6 +374,8 @@ class Player {
         this.inputX = 0;
         this.inputY = 0;
         this.sprite = getDungeonTileSetHeroSprite(0);
+        this.lastHitTick = -999;
+        this.lastHealTick = -999;
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -442,6 +442,14 @@ class Player {
     }
 
     paint(camera) {
+        if (this.lastHitTick + 5 >= tickNumber) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.sprite.tWidth * 2, this.sprite.tHeight * 2);
+        }
+        if (this.lastHealTick + 5 >= tickNumber) {
+            ctx.fillStyle = 'green';
+            ctx.fillRect(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.sprite.tWidth * 2, this.sprite.tHeight * 2);
+        }
         this.sprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), 0, false);
     }
     getMsg() {
@@ -457,6 +465,12 @@ class Player {
             this.inputY = msg.iy;
             this.isJumping = msg.ij;
         }
+    }
+    onHit(damage, world, projectile) {
+        this.lastHitTick = tickNumber;
+    }
+    onHeal(heal, world, projectile) {
+        this.lastHealTick = tickNumber;
     }
 }
 
@@ -477,11 +491,11 @@ class ActionBar {
         this.shortcuts = ['Q', 'E', 'R', 'F', 'M2'];
     }
     tryTrigger(spell) {
-        if (spell.lastAttackTick && this.world.tick < spell.lastAttackTick + spell.cooldown * 30) {
+        if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             return;
         }
         if (spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world)) {
-            spell.lastAttackTick = this.world.tick;
+            spell.lastAttackTick = tickNumber;
         }
     }
     update(input) {
@@ -522,10 +536,10 @@ class ActionBar {
         ctx.fillRect(buttonX, this.topY + 2, 32, 32);
         spell.sprite.paintScale(buttonX, buttonY, 32, 32);
 
-        if (spell.lastAttackTick && this.world.tick < spell.lastAttackTick + spell.cooldown * 30) {
+        if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             ctx.fillStyle = '#4448';
             ctx.fillRect(buttonX, this.topY + 2, 32, 32);
-            const cooldownFor = this.world.tick - spell.lastAttackTick;
+            const cooldownFor = tickNumber - spell.lastAttackTick;
             const cooldownRatio = 1 - cooldownFor / (spell.cooldown * 30);
             ctx.save();
             ctx.beginPath();
@@ -538,6 +552,7 @@ class ActionBar {
             ctx.fillStyle = '#222e';
             ctx.fill();
             ctx.restore();
+            //TODO: show cooldown in sec in middle of the icon
         }
 
         ctx.fillStyle = "white";
@@ -558,12 +573,25 @@ class Mob {
         this.y = y;
         this.maxLife = 100;
         this.life = 100;
+        this.lastHitTick = -9999
+    }
+    getCenterCoord() {
+        return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
     }
     update() {
 
     }
     paint(camera) {
+        if (this.lastHitTick + 5 >= tickNumber) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this.sprite.tWidth * 2, this.sprite.tHeight * 2);
+        }
         this.sprite.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), 0, false);
+    }
+    onHit(damage, world, projectile) {
+        this.lastHitTick = tickNumber;
+    }
+    onHeal(heal, world, projectile) {
     }
 }
 class CellSprite {
@@ -650,12 +678,8 @@ class Level {
         this.mobs = [];
         this.mobs.push(new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(), 10 * 32, 5 * 32));
     }
-    update() {
-
-    }
-
 }
-
+let tickNumber = 0;
 class World {
     constructor(isServer, players, localPlayerId) {
         this.isServer = isServer;
@@ -669,19 +693,17 @@ class World {
         this.actionBar = new ActionBar(this.localPlayer, this);
         this.level = new Level();
         this.map = this.level.map;
-        this.friendlyProjectiles = [];
-        this.dangerousProjectiles = [];
-        this.tick = 0;
+        this.mobs = this.level.mobs;
+        this.projectiles = [];
         this.annimAdded = false;
     }
     addProjectile(anim, from) {
-        this.friendlyProjectiles.push(anim);
+        this.projectiles.push(anim);
         this.annimAdded = true;
     }
     update() {
-        this.tick++;
         if (this.annimAdded) {
-            this.friendlyProjectiles.sort((a, b) => a.zIndex - b.zIndex);
+            this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
         }
         const changed = this.localPlayer.updateLocalPlayer(input, this);
@@ -689,29 +711,49 @@ class World {
             p.update();
         }
         this.camera.update();
-        for (let i = this.friendlyProjectiles.length - 1; i >= 0; i--) {
-            if (!this.friendlyProjectiles[i].update(this)) {
-                this.friendlyProjectiles.splice(i, 1);
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            if (!this.projectiles[i].update(this)) {
+                this.projectiles.splice(i, 1);
             }
         }
-        for (let i = this.dangerousProjectiles.length - 1; i >= 0; i--) {
-            if (!this.dangerousProjectiles[i].update(this)) {
-                this.dangerousProjectiles.splice(i, 1);
-            }
+        for (let m of this.mobs) {
+            //m.update(this);
         }
-        this.level.update();
+        this.checkBulletsHitOnAll()
         this.actionBar.update(input, this);
         const updates = [];
 
         return updates;
     }
+    checkBulletsHitOnAll() {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            if (!this.checkBulletHitOnAll(this.projectiles[i])) {
+                this.projectiles.splice(i, 1);
+            }
+        }
+    }
+    checkBulletHitOnAll(projectile) {
+        if (projectile.targerPlayers) {
+            for (let c of this.players) {
+                if (!projectile.checkHit(c, this)) {
+                    return false;
+                }
+            }
+        }
+        if (projectile.targerMobs) {
+            for (let c of this.mobs) {
+                if (!projectile.checkHit(c, this)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.level.map.paint(this.camera);
-        for (let p of this.friendlyProjectiles) {
-            p.paint(this.camera);
-        }
-        for (let p of this.dangerousProjectiles) {
+        for (let p of this.projectiles) {
             p.paint(this.camera);
         }
         for (let mob of this.level.mobs) {
