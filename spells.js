@@ -52,12 +52,14 @@ class RootingProjectile {
         this.radius = 12;
         this.zIndex = 20;
         this.damage = 1;
+        this.rootDuration = 2;
     }
     paint(x, y, anim) {
         this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius,
             anim.angus + this.spriteCorrectAngus);
     }
     hit(character, world) {
+        character.addBuff(new Buff(BuffId.root, this.sprite, this.rootDuration));
         character.onHit(this.damage, world, this);
         return false;
     }

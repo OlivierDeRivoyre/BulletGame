@@ -689,6 +689,11 @@ class AggroMobBrain {
         if (d < 0.01) {
             return;
         }
+
+        if (this.mob.buffs.find(b => b.id == BuffId.root)) {
+            return;
+        }
+
         const vx = this.speed * (destCoord.x - this.mob.x) / d;
         const vy = this.speed * (destCoord.y - this.mob.y) / d;
         this.mob.x += vx;
@@ -734,6 +739,7 @@ class Mob {
         this.life = this.maxLife;
         this.lastHitTick = -9999;
         this.lastShootTick = -9999;
+        this.buffs = [];
     }
     init(world, i) {
         this.brain.init(this, world, i);
@@ -742,6 +748,11 @@ class Mob {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
     }
     update() {
+        for (let i = this.buffs.length - 1; i >= 0; i--) {
+            if (tickNumber > this.buffs[i].endTick) {
+                this.buffs.splice(i, 1);
+            }
+        }
         if (this.life <= 0) {
             return;
         }
@@ -783,6 +794,16 @@ class Mob {
         this.brain.onHit();
     }
     onHeal(heal, world, projectile) {
+    }
+    addBuff(buff) {
+        buff.endTick = tickNumber + buff.duration * 30;
+        for (let i = 0; i < this.buffs.length; i++) {
+            if (this.buffs[i].id == buff.id) {
+                this.buffs[i] = this.id;
+                return;
+            }
+        }
+        this.buffs.push(buff)
     }
 }
 class CellSprite {
