@@ -643,34 +643,40 @@ class ActionBar {
         spell.sprite.paintScale(buttonX, buttonY, 32, 32);
 
         if (spell == this.castingSpell) {
-            ctx.fillStyle = '#b718';
-            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
+            const total = this.castingUntilTick - this.startCastingAtTick;
+            const current = tickNumber - this.startCastingAtTick;
+            const progress = current / total;
+            this.paintProgressOverSpell(buttonX, buttonY, progress, '#b718');
         }
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             ctx.fillStyle = '#4448';
             ctx.fillRect(buttonX, this.topY + 2, 32, 32);
             const cooldownFor = tickNumber - spell.lastAttackTick;
             const cooldownRatio = 1 - cooldownFor / (spell.cooldown * 30);
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(buttonX, buttonY, 32, 32);
-            ctx.clip();
-            ctx.beginPath();
-            ctx.moveTo(buttonX + 16, buttonY + 16);
-            ctx.lineTo(buttonX + 16, buttonY);
-            ctx.arc(buttonX + 16, buttonY + 16, 30, -0.5 * Math.PI, -0.5 * Math.PI - 2 * cooldownRatio * Math.PI, true);
-            ctx.fillStyle = '#222e';
-            ctx.fill();
-            ctx.restore();
+            this.paintProgressOverSpell(buttonX, buttonY, cooldownRatio, '#222c');
             //TODO: show cooldown in sec in middle of the icon
         }
-
         ctx.fillStyle = "white";
         ctx.font = "12px Consolas";
         ctx.textRendering = "geometricPrecision";
         ctx.fillText(this.shortcuts[i], buttonX + 2, buttonY + 30);
     }
+    paintProgressOverSpell(buttonX, buttonY, ratio, color) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(buttonX, buttonY, 32, 32);
+        ctx.clip();
+        ctx.beginPath();
+        ctx.moveTo(buttonX + 16, buttonY + 16);
+        ctx.lineTo(buttonX + 16, buttonY);
+        ctx.arc(buttonX + 16, buttonY + 16, 30, -0.5 * Math.PI, -0.5 * Math.PI - 2 * ratio * Math.PI, true);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.restore();
+    }
 }
+
 function getNextRand(previous) {
     return ((previous + 11) * 16807) % 2147483647;
 }
