@@ -568,7 +568,7 @@ class ActionBar {
         this.spells[4] = allSpells.shotgun;
         this.topX = 400;
         this.topY = CanvasHeight - 38;
-        this.shortcuts = ['Q', 'E', 'F', '_', 'M2'];
+        this.shortcuts = ['Q', 'E', 'F', 'SPC', 'M2'];
         this.castingSpell = null;
         this.startCastingAtTick = -999;
         this.castingUntilTick = -999;
