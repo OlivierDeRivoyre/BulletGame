@@ -43,9 +43,9 @@ class Input {
             this.keysPressed.s1 = pressed;
         } else if (event.code == 'KeyE') {
             this.keysPressed.s2 = pressed;
-        } else if (event.code == 'KeyR') {
-            this.keysPressed.s3 = pressed;
         } else if (event.code == 'KeyF') {
+            this.keysPressed.s3 = pressed;
+        } else if (event.code == 'Space') {
             this.keysPressed.s4 = pressed;
         }
     }
@@ -559,7 +559,7 @@ class ActionBar {
         this.spells[4] = allSpells.shotgun;
         this.topX = 400;
         this.topY = CanvasHeight - 38;
-        this.shortcuts = ['Q', 'E', 'R', 'F', 'M2'];
+        this.shortcuts = ['Q', 'E', 'F', '_', 'M2'];
     }
     tryTrigger(spell) {
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
