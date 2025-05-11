@@ -52,7 +52,7 @@ class RootingProjectile {
         this.radius = 12;
         this.zIndex = 20;
         this.damage = 1;
-        this.rootDuration = 2;
+        this.rootDuration = 5;
     }
     paint(x, y, anim) {
         this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius,
@@ -228,9 +228,10 @@ class ThrowProjectileSpell {
     constructor(projectile) {
         this.projectile = projectile;
         this.castingTime = 0.2;
-        this.cooldown = 0.5;        
+        this.cooldown = 0.5;
         this.sprite = getRavenSprite(0, 93);
         this.endFunc = null;
+        this.mana = 0;
         this.sound = sounds.lazer;
     }
     trigger(player, mouseCoord, world) {
@@ -250,7 +251,8 @@ class ShotgunAttack {
     constructor(projectile) {
         this.projectile = projectile;
         this.castingTime = 0.2;
-        this.cooldown = 5;
+        this.cooldown = 10;
+        this.mana = 10;
         this.sprite = getRavenSprite(2, 62);
     }
     trigger(player, mouseCoord, world) {
@@ -284,11 +286,12 @@ class ZoneSpell {
     constructor(projectile) {
         this.projectile = projectile;
         this.sprite = projectile.sprite;
-        this.castingTime = 0.5;
+        this.castingTime = 0.2;
         this.cooldown = 5;
         this.range = 5;
-        this.radius = 5;
+        this.radius = 1;
         this.duration = 5;
+        this.mana = 10;
     }
     trigger(player, mouseCoord, world) {
         const center = ZoneSpell.maxRangeCoord(player.getCenterCoord(), mouseCoord, this.range * 64);
@@ -301,9 +304,10 @@ class ZoneSpell {
 class ProtectSpell {
     constructor() {
         this.sprite = getRavenSprite(2, 113);;
-        this.castingTime = 0;
-        this.cooldown = 4;
-        this.duration = 1.5;
+        this.castingTime = 0.2;
+        this.mana = 5;
+        this.cooldown = 5;
+        this.duration = 1;
         this.zIndex = -10;
     }
     trigger(player, mouseCoord, world) {
@@ -348,7 +352,7 @@ class AllSpells {
         return new NoSpell();
     }
     static basicAttack() {
-        let spell = new ThrowProjectileSpell(new BulletProjectile());
+        const spell = new ThrowProjectileSpell(new BulletProjectile());
         spell.cooldown = 0.3;
         return spell;
     }
@@ -356,16 +360,30 @@ class AllSpells {
         let projectile = new BulletProjectile();
         projectile.color = '#f60';
         projectile.range = 2;
-        return new ShotgunAttack(projectile);
+        projectile.damage = 3;
+        const spell = new ShotgunAttack(projectile);
+        spell.castingTime = 0.2;
+        spell.cooldown = 2;
+        spell.mana = 20;
+        return spell;
     }
     static curseGround() {
-        return new ZoneSpell(new CircleAreaProjectile());
+        const spell = new ZoneSpell(new CircleAreaProjectile());
+        spell.castingTime = 0.5;
+        spell.cooldown = 5;
+        spell.range = 5;
+        spell.radius = 5;
+        spell.duration = 5;
+        spell.mana = 25;
+        return spell;
     }
     static rootingProjectile() {
         const projectile = new RootingProjectile();
+        projectile.rootDuration = 5;
         const spell = new ThrowProjectileSpell(projectile);
         spell.sprite = projectile.sprite;
         spell.cooldown = 8;
+        spell.mana = 25;
         spell.sound = sounds.magicMissile;
         return spell;
     }
@@ -373,6 +391,7 @@ class AllSpells {
         const projectile = new HealingProjectile();
         const spell = new ThrowProjectileSpell(projectile);
         spell.cooldown = 10;
+        spell.mana = 35;
         spell.castingTime = 1;
         spell.sprite = projectile.sprite;
         spell.sound = sounds.magicMissile;
@@ -387,7 +406,12 @@ class AllSpells {
         return spell;
     }
     static protectSpell() {
-        return new ProtectSpell();
+        const spell = new ProtectSpell();
+        spell.castingTime = 0;
+        spell.mana = 5;
+        spell.cooldown = 4;
+        spell.duration = 1.5;
+        return spell;
     }
 }
 const allSpells = new AllSpells();

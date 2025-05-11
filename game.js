@@ -143,7 +143,7 @@ async function initPeer() {
 
 
 class Server {
-    static tickDuration = 1000.0 / 30;
+    static tickDuration = 30;//30ms, it is around 30 ticks per second
     constructor() {
         this.connections = [];
         const serverPlayer = new Player(0);
@@ -579,19 +579,26 @@ class ActionBar {
         this.spells[3] = allSpells.protectSpell;
         this.spells[4] = allSpells.shotgun;
         this.topX = 400;
-        this.topY = CanvasHeight - 38;
+        this.height = 60;
+        this.width = 172;
+        this.topY = CanvasHeight - this.height;
         this.shortcuts = ['Q', 'E', 'F', 'SPC', 'M2'];
         this.castingSpell = null;
         this.startCastingAtTick = -999;
         this.castingUntilTick = -999;
+        this.maxMana = 100;
+        this.mana = this.maxMana;
+        this.regenMana = 5;
     }
     tryTrigger(spell) {
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             return false;
         }
+        if(this.mana < spell.mana){
+            return false;
+        }
         if (spell.castingTime <= 0) {
-            spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world);
-            spell.lastAttackTick = tickNumber;
+            this.castSpell(spell);
             return true;
         }
         this.castingSpell = spell;
@@ -600,14 +607,21 @@ class ActionBar {
         this.startCastingAtTick = tickNumber;
         return true;
     }
+    castSpell(spell) {
+        spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world);
+        spell.lastAttackTick = tickNumber;
+        this.mana = Math.max(0, this.mana - spell.mana);
+    }
     update(input) {
         if (this.player.life <= 0) {
             return;
         }
+        if (tickNumber % 30 == 0) {
+            this.mana = Math.min(this.maxMana, this.mana + this.regenMana);
+        }
         if (this.castingSpell != null) {
             if (this.castingUntilTick <= tickNumber) {
-                this.castingSpell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world);
-                this.castingSpell.lastAttackTick = tickNumber;
+                this.castSpell(this.castingSpell)
                 this.castingSpell = null;
             }
             return;
@@ -628,17 +642,19 @@ class ActionBar {
     }
     paint() {
         if (this.castingSpell != null) {
-            this.paintCastingBar(this.topX, this.topY - 10, this.castingSpell);
+            this.paintCastingBar(this.topX + 2, this.topY - 10, this.castingSpell);
         }
         ctx.fillStyle = '#222';
-        ctx.fillRect(this.topX, this.topY, ActionBar.MaxSpells * 34 + 2, 36);
+        ctx.fillRect(this.topX, this.topY, this.width, this.height);
         for (let i = 0; i < this.spells.length; i++) {
             this.paintSpell(i);
         }
+        this.paintManaLifeBar(this.topX + 2, this.topY + 36, this.player.life / this.player.maxLife, 'green', 12);
+        this.paintManaLifeBar(this.topX + 2, this.topY + 50, this.mana / this.maxMana, 'blue', 8);
     }
     paintCastingBar(topX, topY, spell) {
         ctx.fillStyle = "#0008";
-        const width = 168;
+        const width = this.width;
         ctx.fillRect(topX, topY, width, 4);
         const total = this.castingUntilTick - this.startCastingAtTick;
         const current = tickNumber - this.startCastingAtTick;
@@ -670,6 +686,12 @@ class ActionBar {
             this.paintProgressOverSpell(buttonX, buttonY, cooldownRatio, '#222c');
             //TODO: show cooldown in sec in middle of the icon
         }
+        else if(spell.mana != 0 && this.mana < spell.mana){
+            const ratio = 1 - this.mana / spell.mana;
+            ctx.fillStyle = '#44f8';
+            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
+            this.paintProgressOverSpell(buttonX, buttonY, ratio, '#22fc');
+        }
         ctx.fillStyle = "white";
         ctx.font = "12px Consolas";
         ctx.textRendering = "geometricPrecision";
@@ -688,6 +710,13 @@ class ActionBar {
         ctx.fillStyle = color;
         ctx.fill();
         ctx.restore();
+    }
+    paintManaLifeBar(topX, topY, ratio, color, height) {
+        const width = this.width - 4;
+        ctx.fillStyle = "#0008";
+        ctx.fillRect(topX, topY, width, height);
+        ctx.fillStyle = color;
+        ctx.fillRect(topX, topY, width * ratio, height);
     }
 }
 
@@ -1013,7 +1042,7 @@ class World {
         this.projectiles.push(anim);
         this.annimAdded = true;
     }
-    update() {
+    update() {       
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
