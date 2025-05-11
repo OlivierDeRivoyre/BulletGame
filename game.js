@@ -284,7 +284,6 @@ function loadImg(name) {
     return img;
 }
 const dungeonTileSet = loadImg("0x72_DungeonTilesetII_v1.7");
-
 function getDungeonTileSetHeroSprite(j, topMargin) {
     const x = 128;
     const y = j * 32;
@@ -294,6 +293,10 @@ function getDungeonTileSetVilainSprite(i, topMargin) {
     const x = 368;
     const y = 9 + i * 24;
     return new DoubleSprite(dungeonTileSet, x, y + topMargin, 16, 24 - topMargin);
+}
+const outdoorDecorTile = loadImg("Outdoor_Decor_Free");
+function getOutdoorDecorSprite(i, j) {
+    return new SimpleSprite(outdoorDecorTile, i * 16, j * 16, 16, 16);
 }
 class SimpleSprite {
     constructor(tile, tx, ty, tWidth, tHeight) {
@@ -594,7 +597,7 @@ class ActionBar {
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             return false;
         }
-        if(this.mana < spell.mana){
+        if (this.mana < spell.mana) {
             return false;
         }
         if (spell.castingTime <= 0) {
@@ -686,7 +689,7 @@ class ActionBar {
             this.paintProgressOverSpell(buttonX, buttonY, cooldownRatio, '#222c');
             //TODO: show cooldown in sec in middle of the icon
         }
-        else if(spell.mana != 0 && this.mana < spell.mana){
+        else if (spell.mana != 0 && this.mana < spell.mana) {
             const ratio = 1 - this.mana / spell.mana;
             ctx.fillStyle = '#44f8';
             ctx.fillRect(buttonX, this.topY + 2, 32, 32);
@@ -907,31 +910,61 @@ class Mob {
         this.buffs.push(buff)
     }
 }
-class CellSprite {
-    constructor(sprite) {
-        if (sprite.toLowerCase) {
-            this.color = sprite;
-        } else {
-            this.sprite = sprite;
-        }
+class CellColorSprite {
+    constructor(color) {
+        this.color = color;
     }
     paint(x, y) {
-        if (this.color) {
-            ctx.beginPath();
-            ctx.lineWidth = 0;
-            ctx.fillStyle = this.color;
-            ctx.rect(x, y, 64, 64);
-            ctx.fill();
-        } else {
-            this.sprite.paintScale(x, y, 64, 64);
-        }
+        ctx.beginPath();
+        ctx.lineWidth = 0;
+        ctx.fillStyle = this.color;
+        ctx.rect(x, y, 64, 64);
+        ctx.fill();
+    }
+}
+class CellDecoSprite {
+    constructor(sprite, offsetX, offsetY) {
+        this.sprite = sprite;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+    }
+    paint(x, y) {
+        this.sprite.paintScale(x + this.offsetX, y + this.offsetX, 32, 32);
     }
 }
 class CellSpriteFactory {
     constructor() {
-        this.grass1 = new CellSprite('#509060');
-        this.grass2 = new CellSprite('#509360');
-        this.water = new CellSprite('#55B');
+        this.grass1 = new CellColorSprite('#509060');
+        this.grass2 = new CellColorSprite('#509360');
+        this.water = new CellColorSprite('#55B');
+        this.chunkTrunk = new CellDecoSprite(getOutdoorDecorSprite(0, 2), 16, 16);
+        this.rock = new CellDecoSprite(getOutdoorDecorSprite(2, 2), 16, 16);
+        this.grassSmallDecosSprites = [
+            getOutdoorDecorSprite(0, 0),
+            getOutdoorDecorSprite(1, 0),
+            getOutdoorDecorSprite(2, 0),
+            getOutdoorDecorSprite(0, 1),
+            getOutdoorDecorSprite(1, 1),
+            getOutdoorDecorSprite(2, 1),
+            getOutdoorDecorSprite(3, 1),
+            getOutdoorDecorSprite(4, 1),
+            getOutdoorDecorSprite(5, 1),
+            getOutdoorDecorSprite(6, 1),
+            getOutdoorDecorSprite(1, 2),
+            getOutdoorDecorSprite(5, 2),
+            //getOutdoorDecorSprite(6, 2),
+            getOutdoorDecorSprite(2, 7),
+            getOutdoorDecorSprite(0, 8),
+            getOutdoorDecorSprite(1, 8),
+            getOutdoorDecorSprite(0, 9),
+            getOutdoorDecorSprite(1, 9),
+            getOutdoorDecorSprite(0, 10),
+            getOutdoorDecorSprite(1, 10),
+            getOutdoorDecorSprite(0, 11),
+            getOutdoorDecorSprite(1, 11),
+        ];
+
+
     }
 }
 const cellSpriteFactory = new CellSpriteFactory();
@@ -946,17 +979,42 @@ class Cell {
             s.paint(x, y);
         }
     }
+    static getGrassCell(i, j, seed) {
+        const grass = (i + j) % 2 == 0 ? cellSpriteFactory.grass1 : cellSpriteFactory.grass2;
+        const layers = [grass];
+        if (seed % 19 == 7) {
+            layers.push(cellSpriteFactory.chunkTrunk)
+        } else if (seed % 23 == 8) {
+            layers.push(cellSpriteFactory.rock)
+        } else {
+            const coords = [
+                { x: 0, y: 0, mod: 191 },
+                { x: 32, y: 0, mod: 193 },
+                { x: 0, y: 32, mod: 197 },
+                { x: 32, y: 32, mod: 199 },
+            ]
+            for (let c of coords) {
+                const index = seed % c.mod;
+                if (index < cellSpriteFactory.grassSmallDecosSprites.length) {
+                    const decoSprite = cellSpriteFactory.grassSmallDecosSprites[index];
+                    layers.push(new CellDecoSprite(decoSprite, c.x, c.y));
+                }
+            }
+        }
+        return new Cell(layers);
+    }
 }
 
 class Map {
     constructor() {
         this.borderCell = new Cell([cellSpriteFactory.water], { canWalk: false });
         this.cells = new Array(10);
+        let seed = 1;
         for (var j = 0; j < this.cells.length; j++) {
             this.cells[j] = new Array(30);
             for (var i = 0; i < this.cells[j].length; i++) {
-                const grass = (i + j) % 2 == 0 ? cellSpriteFactory.grass1 : cellSpriteFactory.grass2;
-                this.cells[j][i] = new Cell([grass]);
+                seed = getNextRand(seed);
+                this.cells[j][i] = Cell.getGrassCell(i, j, seed);
             }
         }
     }
@@ -1042,7 +1100,7 @@ class World {
         this.projectiles.push(anim);
         this.annimAdded = true;
     }
-    update() {       
+    update() {
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
