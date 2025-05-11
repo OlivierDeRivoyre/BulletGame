@@ -388,6 +388,7 @@ class Player {
         this.maxLife = 100;
         this.life = this.maxLife;
         this.buffs = [];
+        this.castingUntilTick = -999;
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -440,6 +441,11 @@ class Player {
             }
         }
         if (this.life <= 0) {
+            return;
+        }
+        if (this.castingUntilTick > tickNumber) {
+            this.vx = 0;
+            this.vy = 0;
             return;
         }
         const maxSpeed = 4;
@@ -560,36 +566,37 @@ class ActionBar {
         this.topX = 400;
         this.topY = CanvasHeight - 38;
         this.shortcuts = ['Q', 'E', 'F', '_', 'M2'];
+        this.castingSpell = null;
     }
     tryTrigger(spell) {
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
-            return;
+            return false;
         }
         if (spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world)) {
             spell.lastAttackTick = tickNumber;
+            this.player.castingUntilTick = tickNumber + Math.ceil(spell.castingTime * 30);
+            return true;
         }
+        return false;
     }
     update(input) {
         if (this.player.life <= 0) {
-            return false;
+            return;
         }
-        if (input.mouseClicked) {
-            this.tryTrigger(this.basicAttack);
+        if (this.player.castingUntilTick > tickNumber) {
+            return;
         }
-        if (input.mouse2Clicked) {
-            this.tryTrigger(this.spells[4]);
+        if (input.mouse2Clicked && this.tryTrigger(this.spells[4])) {
         }
-        if (input.keysPressed.s1) {
-            this.tryTrigger(this.spells[0]);
+        else if (input.keysPressed.s1 && this.tryTrigger(this.spells[0])) {
         }
-        else if (input.keysPressed.s2) {
-            this.tryTrigger(this.spells[1]);
+        else if (input.keysPressed.s2&&this.tryTrigger(this.spells[1])){
         }
-        else if (input.keysPressed.s3) {
-            this.tryTrigger(this.spells[2]);
+        else if (input.keysPressed.s3 && this.tryTrigger(this.spells[2])) {
         }
-        else if (input.keysPressed.s4) {
-            this.tryTrigger(this.spells[3]);
+        else if (input.keysPressed.s4 &&  this.tryTrigger(this.spells[3])) {
+        }
+        else if (input.mouseClicked && this.tryTrigger(this.basicAttack)) {
         }
     }
     paint() {
@@ -901,7 +908,7 @@ class Level {
     constructor() {
         this.map = new Map();
         this.mobs = [];
-        this.mobs.push(Level.createMob1At({ i: 1, j: 1 }));      
+        this.mobs.push(Level.createMob1At({ i: 1, j: 1 }));
         this.mobs.push(Level.createMob1At({ i: 5, j: 4 }));
 
         this.mobs.push(Level.createMob1At({ i: 12, j: 2 }));

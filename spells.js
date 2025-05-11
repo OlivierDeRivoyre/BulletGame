@@ -227,8 +227,8 @@ class NoSpell {
 class ThrowProjectileSpell {
     constructor(projectile) {
         this.projectile = projectile;
-        this.castingTime = 0;
-        this.cooldown = 0.7;
+        this.castingTime = 0.2;
+        this.cooldown = 0.7;        
         this.sprite = getRavenSprite(0, 93);
         this.endFunc = null;
         this.sound = sounds.lazer;
@@ -249,7 +249,7 @@ class ThrowProjectileSpell {
 class ShotgunAttack {
     constructor(projectile) {
         this.projectile = projectile;
-        this.castingTime = 0;
+        this.castingTime = 0.2;
         this.cooldown = 5;
         this.sprite = getRavenSprite(2, 62);
     }
@@ -284,7 +284,7 @@ class ZoneSpell {
     constructor(projectile) {
         this.projectile = projectile;
         this.sprite = projectile.sprite;
-        this.castingTime = 0;
+        this.castingTime = 0.5;
         this.cooldown = 5;
         this.range = 5;
         this.radius = 5;
@@ -302,7 +302,7 @@ class ProtectSpell {
     constructor() {
         this.sprite = getRavenSprite(2, 113);;
         this.castingTime = 0;
-        this.cooldown = 8;
+        this.cooldown = 4;
         this.duration = 1.5;
         this.zIndex = -10;
     }
