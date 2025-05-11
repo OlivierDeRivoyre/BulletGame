@@ -401,7 +401,7 @@ class Player {
         if (input.keysPressed.left) {
             if (this.inputX != -1) {
                 this.inputX = -1;
-                //this.vx = 0;
+                //   this.vx = 0;
                 changed = true;
             }
         } else if (input.keysPressed.right) {
@@ -412,13 +412,13 @@ class Player {
             }
         } else if (this.inputX != 0) {
             this.inputX = 0;
-            //  this.vx = 0;
+            // this.vx = 0;
             changed = true;
         }
         if (input.keysPressed.up) {
             if (this.inputY != -1) {
                 this.inputY = -1;
-                //  this.vy = 0;
+                //    this.vy = 0;
                 changed = true;
             }
         } else if (input.keysPressed.down) {
@@ -443,13 +443,14 @@ class Player {
         if (this.life <= 0) {
             return;
         }
-        if (this.castingUntilTick > tickNumber) {
-            this.vx = 0;
-            this.vy = 0;
-            return;
-        }
+        const isCasting = this.castingUntilTick > tickNumber;
         const maxSpeed = 4;
         function getNewSpeed(v, input) {
+            if (isCasting) {
+                return 0;
+            }
+            return Math.sign(input) * maxSpeed;
+
             const ratio = Math.abs(v) < maxSpeed * 0.5 ? 1
                 : Math.abs(v) < maxSpeed * 0.8 ? 0.5
                     : 0.3;
@@ -468,13 +469,24 @@ class Player {
                 return newV;
             }
         }
-        this.vx = getNewSpeed(this.vx, this.inputX);
-        this.vy = getNewSpeed(this.vy, this.inputY);
+        let targetVx = getNewSpeed(this.vx, this.inputX);
+        let targetVy = getNewSpeed(this.vy, this.inputY);
         const norm = Math.sqrt(square(this.vx) + square(this.vy));
         if (norm > maxSpeed) {
-            this.vx = this.vx * maxSpeed / norm;
-            this.vy = this.vy * maxSpeed / norm;
+            targetVx = targetVx * maxSpeed / norm;
+            targetVy = targetVy * maxSpeed / norm;
         }
+        const acc = 0.5;
+        function accelerate(currentV, targetV) {
+            const diff = targetV - currentV;
+            if (Math.abs(diff) < acc) {
+                return targetV
+            }
+            return currentV + Math.sign(diff) * acc;
+        }
+        this.vx = accelerate(this.vx, targetVx);
+        this.vy = accelerate(this.vy, targetVy);
+
         this.x += this.vx;
         this.y += this.vy;
         if (Math.abs(this.vx) > 0.01) {
@@ -577,17 +589,16 @@ class ActionBar {
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             return false;
         }
+        if (spell.castingTime <= 0) {
+            spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world);
+            spell.lastAttackTick = tickNumber;
+            return true;
+        }
         this.castingSpell = spell;
         this.player.castingUntilTick = tickNumber + Math.ceil(spell.castingTime * 30);
         this.castingUntilTick = this.player.castingUntilTick;
         this.startCastingAtTick = tickNumber;
         return true;
-        if (spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world)) {
-            spell.lastAttackTick = tickNumber;
-            this.player.castingUntilTick = tickNumber + Math.ceil(spell.castingTime * 30);
-            return true;
-        }
-        return false;
     }
     update(input) {
         if (this.player.life <= 0) {
