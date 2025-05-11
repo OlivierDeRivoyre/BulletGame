@@ -228,7 +228,7 @@ class ThrowProjectileSpell {
     constructor(projectile) {
         this.projectile = projectile;
         this.castingTime = 0.2;
-        this.cooldown = 0.7;        
+        this.cooldown = 0.5;        
         this.sprite = getRavenSprite(0, 93);
         this.endFunc = null;
         this.sound = sounds.lazer;
@@ -373,6 +373,7 @@ class AllSpells {
         const projectile = new HealingProjectile();
         const spell = new ThrowProjectileSpell(projectile);
         spell.cooldown = 10;
+        spell.castingTime = 1;
         spell.sprite = projectile.sprite;
         spell.sound = sounds.magicMissile;
         spell.endFunc = function (coord, player, world) {

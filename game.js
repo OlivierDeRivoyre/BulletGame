@@ -567,11 +567,18 @@ class ActionBar {
         this.topY = CanvasHeight - 38;
         this.shortcuts = ['Q', 'E', 'F', '_', 'M2'];
         this.castingSpell = null;
+        this.startCastingAtTick = -999;
+        this.castingUntilTick = -999;
     }
     tryTrigger(spell) {
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             return false;
         }
+        this.castingSpell = spell;
+        this.player.castingUntilTick = tickNumber + Math.ceil(spell.castingTime * 30);
+        this.castingUntilTick = this.player.castingUntilTick;
+        this.startCastingAtTick = tickNumber;
+        return true;
         if (spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world)) {
             spell.lastAttackTick = tickNumber;
             this.player.castingUntilTick = tickNumber + Math.ceil(spell.castingTime * 30);
@@ -583,28 +590,46 @@ class ActionBar {
         if (this.player.life <= 0) {
             return;
         }
-        if (this.player.castingUntilTick > tickNumber) {
+        if (this.castingSpell != null) {
+            if (this.castingUntilTick <= tickNumber) {
+                this.castingSpell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world);
+                this.castingSpell.lastAttackTick = tickNumber;
+                this.castingSpell = null;
+            }
             return;
         }
+
         if (input.mouse2Clicked && this.tryTrigger(this.spells[4])) {
         }
         else if (input.keysPressed.s1 && this.tryTrigger(this.spells[0])) {
         }
-        else if (input.keysPressed.s2&&this.tryTrigger(this.spells[1])){
+        else if (input.keysPressed.s2 && this.tryTrigger(this.spells[1])) {
         }
         else if (input.keysPressed.s3 && this.tryTrigger(this.spells[2])) {
         }
-        else if (input.keysPressed.s4 &&  this.tryTrigger(this.spells[3])) {
+        else if (input.keysPressed.s4 && this.tryTrigger(this.spells[3])) {
         }
         else if (input.mouseClicked && this.tryTrigger(this.basicAttack)) {
         }
     }
     paint() {
+        if (this.castingSpell != null) {
+            this.paintCastingBar(this.topX, this.topY - 10, this.castingSpell);
+        }
         ctx.fillStyle = '#222';
         ctx.fillRect(this.topX, this.topY, ActionBar.MaxSpells * 34 + 2, 36);
         for (let i = 0; i < this.spells.length; i++) {
             this.paintSpell(i);
         }
+    }
+    paintCastingBar(topX, topY, spell) {
+        ctx.fillStyle = "#0008";
+        const width = 168;
+        ctx.fillRect(topX, topY, width, 4);
+        const total = this.castingUntilTick - this.startCastingAtTick;
+        const current = tickNumber - this.startCastingAtTick;
+        ctx.fillStyle = "#b71";
+        ctx.fillRect(topX, topY, current * width / total, 4);
     }
     paintSpell(i) {
         const spell = this.spells[i];
@@ -617,6 +642,10 @@ class ActionBar {
         ctx.fillRect(buttonX, this.topY + 2, 32, 32);
         spell.sprite.paintScale(buttonX, buttonY, 32, 32);
 
+        if (spell == this.castingSpell) {
+            ctx.fillStyle = '#b718';
+            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
+        }
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             ctx.fillStyle = '#4448';
             ctx.fillRect(buttonX, this.topY + 2, 32, 32);
@@ -992,14 +1021,14 @@ class World {
     }
     checkBulletHitOnAll(projectile) {
         if (projectile.targerPlayers) {
-            for (let c of this.players) {
+            for (let c of this.players.filter(c => c.life > 0)) {
                 if (!projectile.checkHit(c, this)) {
                     return false;
                 }
             }
         }
         if (projectile.targerMobs) {
-            for (let c of this.mobs) {
+            for (let c of this.mobs.filter(c => c.life > 0)) {
                 if (!projectile.checkHit(c, this)) {
                     return false;
                 }
