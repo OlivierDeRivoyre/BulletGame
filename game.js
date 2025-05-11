@@ -285,16 +285,15 @@ function loadImg(name) {
 }
 const dungeonTileSet = loadImg("0x72_DungeonTilesetII_v1.7");
 
-function getDungeonTileSetHeroSprite(j) {
+function getDungeonTileSetHeroSprite(j, topMargin) {
     const x = 128;
     const y = j * 32;
-    const topMargin = 11;
     return new DoubleSprite(dungeonTileSet, x, y + topMargin, 16, 32 - topMargin);
 }
-function getDungeonTileSetVilainSprite(i) {
+function getDungeonTileSetVilainSprite(i, topMargin) {
     const x = 368;
     const y = 9 + i * 24;
-    return new DoubleSprite(dungeonTileSet, x, y, 16, 24);
+    return new DoubleSprite(dungeonTileSet, x, y + topMargin, 16, 24 - topMargin);
 }
 class SimpleSprite {
     constructor(tile, tx, ty, tWidth, tHeight) {
@@ -350,7 +349,7 @@ class DoubleSprite {
     }
     paintReverse(x, y, index) {
         ctx.save();
-        ctx.translate(x + this.tWidth, y);
+        ctx.translate(x + this.tWidth * 2, y);
         ctx.scale(-1, 1);
         ctx.drawImage(this.tile,
             this.tx + index * this.tWidth, this.ty,
@@ -382,13 +381,14 @@ class Player {
         this.vy = 0;
         this.inputX = 0;
         this.inputY = 0;
-        this.sprite = getDungeonTileSetHeroSprite(0);
+        this.sprite = getDungeonTileSetHeroSprite(0, 14);
         this.lastHitTick = -999;
         this.lastHealTick = -999;
         this.maxLife = 100;
         this.life = this.maxLife;
         this.buffs = [];
         this.castingUntilTick = -999;
+        this.lookLeft = false;
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -477,6 +477,9 @@ class Player {
         }
         this.x += this.vx;
         this.y += this.vy;
+        if (Math.abs(this.vx) > 0.01) {
+            this.lookLeft = this.vx < 0;
+        }
     }
 
     paint(camera) {
@@ -500,15 +503,15 @@ class Player {
                 buff.paintFunc(camera);
             }
         }
-        this.sprite.paint(canvasX, canvasY, 0, false);
+        this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
         this.paintLifebar(canvasX, canvasY)
     }
     paintLifebar(canvasX, canvasY) {
-        let top = canvasY + this.sprite.tHeight + 12;
+        let top = canvasY + this.sprite.tHeight * 2;
         ctx.fillStyle = "black";
-        ctx.fillRect(canvasX, top + 10, this.sprite.tWidth * 2, 4);
+        ctx.fillRect(canvasX, top + 2, this.sprite.tWidth * 2, 4);
         ctx.fillStyle = "green";
-        ctx.fillRect(canvasX, top + 10, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
+        ctx.fillRect(canvasX, top + 2, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
     }
     getMsg() {
         return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
@@ -793,6 +796,7 @@ class Mob {
         this.lastHitTick = -9999;
         this.lastShootTick = -9999;
         this.buffs = [];
+        this.lookLeft = false;
     }
     init(world, i) {
         this.brain.init(this, world, i);
@@ -809,7 +813,11 @@ class Mob {
         if (this.life <= 0) {
             return;
         }
+        const oldX = this.x;
         this.brain.update();
+        if (this.x != oldX) {
+            this.lookLeft = this.x < oldX;
+        }
     }
     tryShoot(target, world) {
         if (tickNumber < this.lastShootTick + this.spell.cooldown * 30) {
@@ -831,15 +839,15 @@ class Mob {
             ctx.fillStyle = 'red';
             ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
-        this.sprite.paint(canvasX, canvasY, 0, false);
+        this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
         this.paintLifebar(canvasX, canvasY);
     }
     paintLifebar(canvasX, canvasY) {
-        let top = canvasY + this.sprite.tHeight + 12;
+        let top = canvasY + this.sprite.tHeight * 2;
         ctx.fillStyle = "black";
-        ctx.fillRect(canvasX, top + 10, this.sprite.tWidth * 2, 4);
+        ctx.fillRect(canvasX, top + 2, this.sprite.tWidth * 2, 4);
         ctx.fillStyle = "green";
-        ctx.fillRect(canvasX, top + 10, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
+        ctx.fillRect(canvasX, top + 2, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
     }
     onHit(damage, world, projectile) {
         this.life = Math.max(0, this.life - damage);
@@ -964,7 +972,7 @@ class Level {
         this.mobs.push(Level.createMob1At({ i: 28, j: 7 }));
     }
     static createMob1At(cell) {
-        const mob = new Mob(getDungeonTileSetVilainSprite(0), new AggroMobBrain(),
+        const mob = new Mob(getDungeonTileSetVilainSprite(0, 12), new AggroMobBrain(),
             mobSpells.basicAttack, cell.i * 64, cell.j * 64);
         return mob;
     }
