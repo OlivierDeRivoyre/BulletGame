@@ -48,6 +48,9 @@ class Input {
         } else if (event.code == 'Space') {
             this.keysPressed.s4 = pressed;
         }
+        if(event.key == 'Escape'){
+            screen.currentView = new WorldMap();
+        }
     }
     keydown(event) {
         this.keyPressed(true, event);
@@ -1101,6 +1104,10 @@ class World {
         this.annimAdded = true;
     }
     update() {
+        if(screen.currentView != this && screen.currentView != null){
+            screen.currentView.update();
+            return [];
+        }
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
