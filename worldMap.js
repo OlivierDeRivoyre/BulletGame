@@ -18,21 +18,22 @@ class WorldMap {
         for (let i = 0; i < 16; i++) {
             this.vilains.push(getDungeonTileSetVilainSprite(i, 0));
         }
-        const self = this;
-        function array2d() {
-            const a = new Array(self.cellWidth);
-            for (let i = 0; i < self.cellWidth; i++) {
-                a[i] = new Array(self.cellHeight);
-            }
-            return a;
-        }
-        this.fog = array2d();
+        this.fog = this.array2d();
         this.monsters = [];
-        this.reliefs = array2d();
+        this.reliefs = this.array2d();
         this.createMonsters();
         this.player = { i: 3, j: 2, sprite: getDungeonTileSetHeroSprite(0, 14) };
         this.unfogAround(this.player.i, this.player.j);
         this.nextMoveTick = -999;
+        this.monsterLimit = this.array2d();
+        this.computePaths();
+    }
+    array2d() {
+        const a = new Array(this.cellWidth);
+        for (let i = 0; i < this.cellWidth; i++) {
+            a[i] = new Array(this.cellHeight);
+        }
+        return a;
     }
     createMonsters() {
         const self = this;
@@ -44,7 +45,7 @@ class WorldMap {
         pushMonster(0, 1, 2);
         pushMonster(1, 2, 3);
         pushMonster(1, 2, 3);
-        pushMonster(1, 4, 1);
+        pushMonster(1, 5, 1);
         pushMonster(2, 5, 3);
         pushMonster(0, 6, 0);
         pushMonster(3, 6, 2);
@@ -73,30 +74,36 @@ class WorldMap {
         pushMonster(14, 5, 10);
         pushMonster(11, 3, 9);
     }
-    update() {
-        if (tickNumber  < this.nextMoveTick) {
-            return;
-        }
-        let changed = false;
-        if (input.keysPressed.left) {
-            this.player.i--;
-            changed = true;
-        }
-        if (input.keysPressed.right) {
-            this.player.i++;
-            changed = true;
-        }
-        if (input.keysPressed.up) {
-            this.player.j--;
-            changed = true;
-        }
-        if (input.keysPressed.down) {
-            this.player.j++;
-            changed = true;
-        }
-        if(changed){
-            this.unfogAround(this.player.i, this.player.j);
-             this.nextMoveTick = tickNumber + 15;
+    computeMonsterLimit() {
+        const self = this;
+        for (let m of this.monsters) {
+            function setLimit(i, j) {
+                const x = m.i + i;
+                const y = m.j + j;
+                if (x < 0 || x >= self.cellWidth || y < 0 || y >= self.cellHeight) {
+                    return;
+                }
+                if (i == -1 && self.player.i > m.i) {
+                    self.monsterLimit[x][y] = m;
+                }
+                if (i == 1 && self.player.i < m.i) {
+                    self.monsterLimit[x][y] = m;
+                }
+                if (j == -1 && self.player.j > m.j) {
+                    self.monsterLimit[x][y] = m;
+                }
+                if (j == 1 && self.player.j < m.j) {
+                    self.monsterLimit[x][y] = m;
+                }
+            }
+            setLimit(-1, -1);
+            setLimit(-1, 0);
+            setLimit(-1, 1);
+            setLimit(0, -1);
+            setLimit(0, 1);
+            setLimit(1, -1);
+            setLimit(1, 0);
+            setLimit(1, 1);
         }
     }
     unfogAround(i, j) {
@@ -108,16 +115,87 @@ class WorldMap {
             const oldValue = self.fog[i][j] || 0;
             self.fog[i][j] = Math.max(v, oldValue);
         }
-        unfog(i, j, 1);
-        unfog(i - 1, j - 1, 0.5);
-        unfog(i - 1, j, 0.5);
-        unfog(i - 1, j + 1, 0.5);
-        unfog(i, j - 1, 0.5);
-        unfog(i, j + 1, 0.5);
-        unfog(i + 1, j - 1, 0.5);
-        unfog(i + 1, j, 0.5);
-        unfog(i + 1, j + 1, 0.5);
-
+        //unfog(i, j, 1);
+        for (let x = -2; x <= 2; x++) {
+            for (let y = -2; y <= 2; y++) {
+                const level = 0.5;
+                unfog(i + x, j + y, level);
+            }
+        }
+        return;
+    }
+    isInside(i, j) {
+        if (i < 0 || i >= this.cellWidth || j < 0 || j >= this.cellHeight) {
+            return false;
+        }
+        return true;
+    }
+    computePaths() {
+        const map = this.array2d();
+        const self = this;
+        function get(i, j) {
+            if (!self.isInside(i, j)) {
+                return;
+            }
+            return map[i][j];
+        }
+        function set(i, j, v) {
+            if (!self.isInside(i, j)) {
+                return;
+            }
+            map[i][j] = v;
+        }
+        const directions = [{ i: -1, j: 0 }, { i: 0, j: -1 }, { i: 1, j: 0 }, { i: 0, j: 1 }];
+        for (let m of this.monsters) {
+            set(m.i, m.j, { hasMonster: true });
+        }
+        for (let m of this.monsters) {
+            for (let around of directions) {
+                if (!get(m.i + around.i, m.j + around.j)) {
+                    set(m.i + around.i, m.j + around.j, { mustGoToMonster: true })
+                }
+            }
+        }
+        const queue = [{ i: this.player.i, j: this.player.j }];
+        while (queue.length != 0) {
+            const current = queue[0];
+            queue.splice(0, 1);
+            if (!this.isInside(current.i, current.j)) {
+                continue;
+            }
+            const position = get(current.i, current.j);
+            if (position) {
+                if (position.fog == 1) {
+                    continue;
+                }
+                if (position.hasMonster) {
+                    map[current.i][current.j] = { fog: 1, hasMonster: 1 };
+                    continue;
+                }
+                if (position.mustGoToMonster) {
+                    map[current.i][current.j] = { fog: 1, mustGoToMonster: 1 };
+                    for (let around of directions) {
+                        const p = get(current.i + around.i, current.j + around.j);
+                        if (p && p.hasMonster) {
+                            queue.push({ i: current.i + around.i, j: current.j + around.j })
+                        }
+                    }
+                    continue;
+                }
+            }
+            map[current.i][current.j] = { fog: 1 };
+            for (let around of directions) {
+                queue.push({ i: current.i + around.i, j: current.j + around.j })
+            }
+        }
+        for (let i = 0; i < this.cellWidth; i++) {
+            for (let j = 0; j < this.cellHeight; j++) {
+                const position = get(i, j);
+                if (position && position.fog == 1) {
+                    this.fog[i][j] = 1;
+                }
+            }
+        }
     }
     paintCell(sprite, i, j) {
         const px = this.borderX + i * this.cellPx;
@@ -125,7 +203,7 @@ class WorldMap {
         sprite.paint(px, py);
         ctx.font = "11px Georgia";
         ctx.fillStyle = 'white';
-        //    ctx.fillText(i + ", " + j, px + 16, py + 24);
+        ctx.fillText(i + ", " + j, px + 16, py + 24);
     }
     paintMob(mobIndex, i, j) {
         const sprite = this.vilains[mobIndex];
@@ -178,4 +256,53 @@ class WorldMap {
             }
         }
     }
+    update() {
+        if (tickNumber < this.nextMoveTick) {
+            return;
+        }
+        let newPos = { i: this.player.i, j: this.player.j };
+        if (input.keysPressed.left) {
+            newPos.i--;
+        }
+        else if (input.keysPressed.right) {
+            newPos.i++;
+        }
+        else if (input.keysPressed.up) {
+            newPos.j--;
+        }
+        else if (input.keysPressed.down) {
+            newPos.j++;
+        }
+        else if (input.keysPressed.s4) {
+            this.tryEnter();
+        }
+        if(this.player.i == newPos.i && this.player.j == newPos.j){
+            return;
+        }
+        if (!this.isInside(newPos.i, newPos.j)) {
+            return;
+        }
+        if (this.fog[newPos.i][newPos.j] != 1) {
+            return;
+        }
+        this.player.i = newPos.i;
+        this.player.j = newPos.j;
+        this.unfogAround(this.player.i, this.player.j);
+        this.nextMoveTick = tickNumber + 10;
+    }
+    tryEnter(){
+        for(let i = 0; i <this.monsters.length; i++){
+            const m = this.monsters[i];
+            if(m.i == this.player.i && m.j == this.player.j){
+                this.enterLevel(i);
+                return;
+            }
+        }
+    }
+    enterLevel(monsterIndex){
+        // TEMP
+        this.monsters.splice(monsterIndex, 1);
+        this.computePaths();
+    }
 }
+
