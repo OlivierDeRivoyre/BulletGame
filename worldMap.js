@@ -1,4 +1,5 @@
 const pipoBuildingTileSet = loadImg("pipo-map001");
+const pipoGroundTileSet = loadImg("pipo-map001_at");
 class WorldMap {
     constructor() {
         this.cellPx = 48;
@@ -9,15 +10,38 @@ class WorldMap {
         function getPipoTile(i, j) {
             return new SimpleSprite(pipoBuildingTileSet, i * 48, j * 48, 48, 48);
         }
+        function getWaterTile(i, j) {
+            const topX = 8 * 48;
+            const topY = 12 * 48;
+            return new SimpleSprite(pipoGroundTileSet, topX + i * 48, topY + j * 48, 48, 48);
+        }
         this.grass = getPipoTile(0, 0);
         this.house = getPipoTile(0, 6);
         this.dungeon = new SimpleSprite(pipoBuildingTileSet, 3 * 48, 8 * 48, 2 * 48, 2 * 48);
         this.moutain = new SimpleSprite(pipoBuildingTileSet, 0, 4 * 48, 2 * 48, 2 * 48);
         this.halfMoutain = new SimpleSprite(pipoBuildingTileSet, 2 * 48, 4 * 48, 2 * 48, 2 * 48);
+        this.riverV = getWaterTile(4, 1);
+        this.riverEnter = getWaterTile(0, 5);
+        this.lakeLeftTop = getWaterTile(5, 0);
+        this.lakeTop = getWaterTile(6, 0);
+        this.lakeRightTop = getWaterTile(7, 0);
+        this.lakeLeft = getWaterTile(5, 1);
+        this.lakeCenter = getWaterTile(6, 1);
+        this.lakeRight = getWaterTile(7, 1);
+        this.lakeLeftBottom = getWaterTile(5, 2);
+        this.lakeBottom = getWaterTile(6, 2);
+        this.lakeRightBottom = getWaterTile(7, 2);
+        this.lakeExit = getWaterTile(1, 5);
+        this.woodBridge = new SimpleSprite(pipoBuildingTileSet, 0, 96, 48, 70);
+        this.stoneBridge = new SimpleSprite(pipoBuildingTileSet, 96, 96, 48, 70);
+        this.whirlpool = getPipoTile(4, 2);
+
         this.vilains = [];
         for (let i = 0; i < 16; i++) {
             this.vilains.push(getDungeonTileSetVilainSprite(i, 0));
         }
+        this.blockedCells = this.array2d();
+        this.setBlockedCells();
         this.fog = this.array2d();
         this.monsters = [];
         this.reliefs = this.array2d();
@@ -27,6 +51,66 @@ class WorldMap {
         this.nextMoveTick = -999;
         this.monsterLimit = this.array2d();
         this.computePaths();
+    }
+    setBlockedCells() {
+        for (let i = 0; i <= 7; i++) {
+            for (let j = 4; j <= 7; j++) {
+                this.blockedCells[i][j] = "Mountains";
+            }
+        }
+        this.blockedCells[8][5] = "Mountains";
+        this.blockedCells[8][6] = "Mountains";
+        for (let i = 11; i <= 16; i++) {
+            for (let j = 4; j <= 7; j++) {
+                this.blockedCells[i][j] = "Lake";
+            }
+        }
+        this.blockedCells[15][0] = "River";
+        this.blockedCells[15][2] = "River";
+        this.blockedCells[15][3] = "River";
+        this.blockedCells[13][8] = "River";
+        this.blockedCells[13][10] = "River";
+    }
+    paintWater() {
+        this.paintCell(this.riverV, 15, 0);
+        this.paintCell(this.riverV, 15, 1);
+        this.paintCell(this.riverV, 15, 2);
+        this.paintCell(this.riverV, 15, 3);
+
+        this.paintCell(this.lakeLeftTop, 11, 4);
+        this.paintCell(this.lakeTop, 12, 4);
+        this.paintCell(this.lakeTop, 13, 4);
+        this.paintCell(this.lakeTop, 14, 4);
+        this.paintCell(this.riverEnter, 15, 4);
+        this.paintCell(this.lakeRightTop, 16, 4);
+
+        this.paintCell(this.lakeLeft, 11, 5);
+        this.paintCell(this.lakeCenter, 12, 5);
+        this.paintCell(this.lakeCenter, 13, 5);
+        this.paintCell(this.lakeCenter, 14, 5);
+        this.paintCell(this.lakeCenter, 15, 5);
+        this.paintCell(this.lakeRight, 16, 5);
+        this.paintCell(this.lakeLeft, 11, 6);
+        this.paintCell(this.lakeCenter, 12, 6);
+        this.paintCell(this.lakeCenter, 13, 6);
+        this.paintCell(this.lakeCenter, 14, 6);
+        this.paintCell(this.lakeCenter, 15, 6);
+        this.paintCell(this.lakeRight, 16, 6);
+
+        this.paintCell(this.lakeLeftBottom, 11, 7);
+        this.paintCell(this.lakeBottom, 12, 7);
+        this.paintCell(this.lakeExit, 13, 7);
+        this.paintCell(this.lakeBottom, 14, 7);
+        this.paintCell(this.lakeBottom, 15, 7);
+        this.paintCell(this.lakeRightBottom, 16, 7);
+
+        this.paintCell(this.riverV, 13, 8);
+        this.paintCell(this.riverV, 13, 9);
+        this.paintCell(this.riverV, 13, 10);
+
+        this.paintCell(this.woodBridge, 15, 1);
+        this.paintCell(this.stoneBridge, 13, 9);
+        this.paintCell(this.whirlpool, 13, 6);
     }
     array2d() {
         const a = new Array(this.cellWidth);
@@ -61,7 +145,7 @@ class WorldMap {
         pushMonster(5, 16, 3);
         pushMonster(15, 19, 1);
         pushMonster(15, 17, 5);
-        pushMonster(4, 16, 7);
+        pushMonster(4, 18, 7);
         pushMonster(8, 18, 9);
         pushMonster(6, 14, 9);
         pushMonster(5, 12, 9);
@@ -163,6 +247,9 @@ class WorldMap {
             if (!this.isInside(current.i, current.j)) {
                 continue;
             }
+            if(this.blockedCells[current.i][current.j]){
+                continue;
+            }
             const position = get(current.i, current.j);
             if (position) {
                 if (position.fog == 1) {
@@ -201,9 +288,9 @@ class WorldMap {
         const px = this.borderX + i * this.cellPx;
         const py = this.borderY + j * this.cellPx;
         sprite.paint(px, py);
-        ctx.font = "11px Georgia";
-        ctx.fillStyle = 'white';
-        ctx.fillText(i + ", " + j, px + 16, py + 24);
+      //  ctx.font = "11px Georgia";
+      //  ctx.fillStyle = 'white';
+      //  ctx.fillText(i + ", " + j, px + 16, py + 24);
     }
     paintMob(mobIndex, i, j) {
         const sprite = this.vilains[mobIndex];
@@ -239,6 +326,8 @@ class WorldMap {
         this.paintCell(this.moutain, 7, 5);
         this.paintCell(this.dungeon, 1, 8);
 
+        this.paintWater();
+
         for (let m of this.monsters) {
             this.paintMob(m.mobIndex, m.i, m.j);
         }
@@ -249,6 +338,7 @@ class WorldMap {
                 if (fog == 1) {
                     continue;
                 }
+                //continue;                
                 ctx.fillStyle = fog ? '#2228' : '#222';
                 const px = this.borderX + i * this.cellPx;
                 const py = this.borderY + j * this.cellPx;
@@ -276,10 +366,13 @@ class WorldMap {
         else if (input.keysPressed.s4) {
             this.tryEnter();
         }
-        if(this.player.i == newPos.i && this.player.j == newPos.j){
+        if (this.player.i == newPos.i && this.player.j == newPos.j) {
             return;
         }
         if (!this.isInside(newPos.i, newPos.j)) {
+            return;
+        }
+        if (this.blockedCells[newPos.i][newPos.j]) {
             return;
         }
         if (this.fog[newPos.i][newPos.j] != 1) {
@@ -290,16 +383,16 @@ class WorldMap {
         this.unfogAround(this.player.i, this.player.j);
         this.nextMoveTick = tickNumber + 10;
     }
-    tryEnter(){
-        for(let i = 0; i <this.monsters.length; i++){
+    tryEnter() {
+        for (let i = 0; i < this.monsters.length; i++) {
             const m = this.monsters[i];
-            if(m.i == this.player.i && m.j == this.player.j){
+            if (m.i == this.player.i && m.j == this.player.j) {
                 this.enterLevel(i);
                 return;
             }
         }
     }
-    enterLevel(monsterIndex){
+    enterLevel(monsterIndex) {
         // TEMP
         this.monsters.splice(monsterIndex, 1);
         this.computePaths();
