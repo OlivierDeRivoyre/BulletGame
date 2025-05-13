@@ -52,6 +52,7 @@ class WorldMap {
         this.nextMoveTick = -999;
         this.monsterLimit = this.array2d();
         this.computePaths();
+        this.rewardTooltip = new RewardTooltip();
     }
     array2d() {
         const a = new Array(this.cellWidth);
@@ -309,6 +310,7 @@ class WorldMap {
                 ctx.fillRect(px, py, 48, 48);
             }
         }
+        this.rewardTooltip.paint();
     }
     paintWater() {
         this.paintCell(this.riverV, 15, 0);
@@ -386,6 +388,11 @@ class WorldMap {
         this.player.i = newPos.i;
         this.player.j = newPos.j;
         this.unfogAround(this.player.i, this.player.j);
+        if(this.monsters.find(m => m.i == this.player.i && m.j == this.player.j)){
+            this.rewardTooltip.temp_SetRandomReward();
+        } else{
+            this.rewardTooltip.rewards = [];
+        }
         this.nextMoveTick = tickNumber + 10;
     }
     tryEnter() {
@@ -404,3 +411,47 @@ class WorldMap {
     }
 }
 
+class RewardTooltip {
+    constructor() {
+        this.rewards = []
+    }
+    temp_SetRandomReward(){
+        this.seed = getNextRand(this.seed || 17);
+        const allRewards = [
+            { sprite: allSpells.curseGround.sprite, name: "Curse Ground I", color: "#FBB" },
+            { sprite: allSpells.healProjectile.sprite, name: "Healing Projectile I", color: "#BFB" },
+            { sprite: allSpells.protectSpell.sprite, name: "Protection I", color: "#BBF" },
+            { sprite: allSpells.shotgun.sprite, name: "Multi shot I", color: "#FBB" },
+            { sprite: allSpells.rootingProjectile.sprite, name: "Rooting shot", color: "#FBB" },            
+        ]
+        const selected = allRewards[this.seed % allRewards.length];
+        this.rewards = [selected];
+    }
+    paint() {
+        if (this.rewards.length == 0) {
+            return;
+        }
+
+        const topX = 32 + 10;
+        const topY = 16 + 48 * 5;
+        const width = 48 * 6;
+        const height = 48 * 3;
+        ctx.fillStyle = "#303030";
+        ctx.fillRect(topX, topY, width, height);
+        let x = topX + 8;
+        let y = topY + 16;
+        ctx.font = "12px Consolas";
+        ctx.fillStyle = 'white';
+        ctx.textRendering = "geometricPrecision";
+        ctx.fillText("Potential rewards:", x, y);
+        y += 8;
+        for(let reward of this.rewards){
+            reward.sprite.paintScale(x, y, 32, 32);
+            ctx.font = "12px Consolas";
+            ctx.fillStyle = reward.color;
+            ctx.textRendering = "geometricPrecision";
+            ctx.fillText(reward.name, x + 40, y + 20);
+            y += 34;
+        }
+    }
+}
