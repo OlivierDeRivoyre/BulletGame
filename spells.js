@@ -354,6 +354,7 @@ class AllSpells {
     static basicAttack() {
         const spell = new ThrowProjectileSpell(new BulletProjectile());
         spell.cooldown = 0.3;
+        spell.castingTime = 0;
         return spell;
     }
     static shotgun() {
