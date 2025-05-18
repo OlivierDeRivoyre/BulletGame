@@ -48,8 +48,8 @@ class Input {
         } else if (event.code == 'Space') {
             this.keysPressed.s4 = pressed;
         }
-        if(event.key == 'Escape'){
-            screen.currentView = new WorldMap();
+        if (event.key == 'Escape') {
+            screen.currentView = game.worldMap;
         }
     }
     keydown(event) {
@@ -151,7 +151,9 @@ class Server {
         this.connections = [];
         const serverPlayer = new Player(0);
         this.world = new World(true, [serverPlayer], serverPlayer.id);
-        screen.currentView = this.world;
+
+        game = new Game(true, this.world);
+        screen.currentView = game.worldMap;
     }
     onConnect(conn) {
         if (!this.isARefreshOfExistingConnection(conn)) {
@@ -622,6 +624,11 @@ class ActionBar {
         if (this.player.life <= 0) {
             return;
         }
+        if (input.keysPressed.s4 && this.world.exitCell && this.world.exitCell.isPlayerInside(this.player)) {
+            input.keyPressed.s4 = false;
+            this.world.exitCell.trigger();            
+            return;
+        }
         if (tickNumber % 30 == 0) {
             this.mana = Math.min(this.maxMana, this.mana + this.regenMana);
         }
@@ -736,13 +743,13 @@ function computeDistance(coord1, coord2) {
     return Math.sqrt(distanceSquare(coord1, coord2));
 }
 class AggroMobBrain {
-    init(mob, world, i) {
+    init(mob, world, mobSeed) {
         this.mob = mob;
         this.world = world;
         this.intialCoord = { x: this.mob.x, y: this.mob.y };
         this.targetCoord = null;
         this.targetPlayer = null;
-        this.mob.seed = i;
+        this.mob.seed = mobSeed;
         this.fireRange = 6;
         this.speed = 3;
         this.walkAroundPlayerUntil = -9999;
@@ -837,15 +844,18 @@ class Mob {
         this.spell = spell;
         this.x = x;
         this.y = y;
+        this.initialX = x;
+        this.initialY = y;
         this.maxLife = 100;
         this.life = this.maxLife;
         this.lastHitTick = -9999;
         this.lastShootTick = -9999;
         this.buffs = [];
         this.lookLeft = false;
+        this.createExitCell = false;
     }
-    init(world, i) {
-        this.brain.init(this, world, i);
+    init(world, mobSeed) {
+        this.brain.init(this, world, mobSeed);
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -885,7 +895,7 @@ class Mob {
             ctx.fillStyle = 'red';
             ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
-        this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
+        this.sprite.paint(canvasX, canvasY, (tickNumber % 40) < 20, this.lookLeft);
         this.paintLifebar(canvasX, canvasY);
     }
     paintLifebar(canvasX, canvasY) {
@@ -899,6 +909,9 @@ class Mob {
         this.life = Math.max(0, this.life - damage);
         this.lastHitTick = tickNumber;
         this.brain.onHit();
+        if(this.life <= 0 && !world.exitCell){
+            world.exitCell = new ExitCell(this.initialX, this.initialY);
+        }
     }
     onHeal(heal, world, projectile) {
     }
@@ -1078,6 +1091,24 @@ class Level {
         return mob;
     }
 }
+class ExitCell {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.sprite = getRavenSprite(2, 0);
+    }
+    paint(camera) {
+        const canvasX = camera.toCanvasX(this.x);
+        const canvasY = camera.toCanvasY(this.y);
+        this.sprite.paint(canvasX, canvasY)
+    }
+    trigger() {
+        game.screen.currentView = game.worldMap;
+    }
+    isPlayerInside(player){
+        return distanceSquare(this, player) < square(32);
+    }
+}
 let tickNumber = 0;
 class World {
     constructor(isServer, players, localPlayerId) {
@@ -1095,16 +1126,31 @@ class World {
         this.mobs = this.level.mobs;
         this.projectiles = [];
         this.annimAdded = false;
+        this.mobs[this.mobs.length - 1].createExitCell = true;
         for (let i = 0; i < this.mobs.length; i++) {
             this.mobs[i].init(this, i);
         }
+    }
+    startLevel(level) {
+        this.level = level;
+        this.map = this.level.map;
+        this.mobs = this.level.mobs;
+        for (let i = 0; i < this.players.length; i++) {
+            this.players[i].x = 32 * (5 * i);
+            this.players[i].y = 32 * 5;
+        }
+        this.projectiles = [];
+        for (let i = 0; i < this.mobs.length; i++) {
+            this.mobs[i].init(this, i);
+        }
+        this.exitCell = null;
     }
     addProjectile(anim) {
         this.projectiles.push(anim);
         this.annimAdded = true;
     }
     update() {
-        if(screen.currentView != this && screen.currentView != null){
+        if (screen.currentView != this && screen.currentView != null) {
             screen.currentView.update();
             return [];
         }
@@ -1175,9 +1221,14 @@ class World {
         for (let p of this.projectiles) {
             p.paint(this.camera);
         }
+        if (this.exitCell) {
+            this.exitCell.paint(this.camera);
+        }
         for (let mob of this.level.mobs) {
             mob.paint(this.camera);
         }
+
+
         for (let p of this.players) {
             p.paint(this.camera);
         }
@@ -1319,6 +1370,18 @@ class Screen {
     }
 }
 const screen = new Screen();
+
+class Game {
+    constructor(isServer, world) {
+        this.isServer = isServer;
+        this.world = world;
+        this.worldMap = new WorldMap();
+        this.screen = screen;
+    }
+}
+let game = null;
+
+
 initPeer();
 function fullScreen() {
     screen.fullScreen();

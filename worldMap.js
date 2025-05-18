@@ -201,7 +201,7 @@ class WorldMap {
                 }
             }
         }
-        const queue = [{ i: this.player.i, j: this.player.j }];
+        const queue = [{ i: 3, j: 2 }];
         while (queue.length != 0) {
             const current = queue[0];
             queue.splice(0, 1);
@@ -371,6 +371,7 @@ class WorldMap {
             newPos.j++;
         }
         else if (input.keysPressed.s4) {
+            input.keysPressed.s4 = false;
             this.tryEnter();
         }
         if (this.player.i == newPos.i && this.player.j == newPos.j) {
@@ -388,9 +389,9 @@ class WorldMap {
         this.player.i = newPos.i;
         this.player.j = newPos.j;
         this.unfogAround(this.player.i, this.player.j);
-        if(this.monsters.find(m => m.i == this.player.i && m.j == this.player.j)){
+        if (this.monsters.find(m => m.i == this.player.i && m.j == this.player.j)) {
             this.rewardTooltip.temp_SetRandomReward();
-        } else{
+        } else {
             this.rewardTooltip.rewards = [];
         }
         this.nextMoveTick = tickNumber + 10;
@@ -404,10 +405,11 @@ class WorldMap {
             }
         }
     }
-    enterLevel(monsterIndex) {
-        // TEMP
+    enterLevel(monsterIndex) {                
         this.monsters.splice(monsterIndex, 1);
         this.computePaths();
+        game.world.startLevel(new Level());
+        game.screen.currentView = game.world;
     }
 }
 
@@ -415,14 +417,14 @@ class RewardTooltip {
     constructor() {
         this.rewards = []
     }
-    temp_SetRandomReward(){
+    temp_SetRandomReward() {
         this.seed = getNextRand(this.seed || 17);
         const allRewards = [
             { sprite: allSpells.curseGround.sprite, name: "Curse Ground I", color: "#FBB" },
             { sprite: allSpells.healProjectile.sprite, name: "Healing Projectile I", color: "#BFB" },
             { sprite: allSpells.protectSpell.sprite, name: "Protection I", color: "#BBF" },
             { sprite: allSpells.shotgun.sprite, name: "Multi shot I", color: "#FBB" },
-            { sprite: allSpells.rootingProjectile.sprite, name: "Rooting shot", color: "#FBB" },            
+            { sprite: allSpells.rootingProjectile.sprite, name: "Rooting shot", color: "#FBB" },
         ]
         const selected = allRewards[this.seed % allRewards.length];
         this.rewards = [selected];
@@ -445,7 +447,7 @@ class RewardTooltip {
         ctx.textRendering = "geometricPrecision";
         ctx.fillText("Potential rewards:", x, y);
         y += 8;
-        for(let reward of this.rewards){
+        for (let reward of this.rewards) {
             reward.sprite.paintScale(x, y, 32, 32);
             ctx.font = "12px Consolas";
             ctx.fillStyle = reward.color;
