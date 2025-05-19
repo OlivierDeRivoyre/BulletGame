@@ -1,7 +1,8 @@
 
 const debug = !!new URLSearchParams(window.location.search).get("debug");;
 class WorldMap {
-    constructor() {
+    constructor(isServer, players) {
+        this.isServer = isServer;
         this.cellPx = 48;
         this.borderX = 32;
         this.borderY = 24;
@@ -46,7 +47,8 @@ class WorldMap {
         this.monsters = [];
         this.reliefs = this.array2d();
         this.createMonsters();
-        this.player = { i: 3, j: 2, sprite: getDungeonTileSetHeroSprite(0, 14) };
+        this.players = players.map(p => { return { id: p.id, i: 3, j: 2, sprite: p.sprite }; });
+        this.player = this.players[isServer ? 0 : 1];
         this.unfogAround(this.player.i, this.player.j);
         this.nextMoveTick = -999;
         this.monsterLimit = this.array2d();
@@ -88,7 +90,7 @@ class WorldMap {
     createMonsters() {
         const self = this;
         function pushMonster(mobIndex, i, j) {
-            self.monsters.push({ mobIndex, i, j })
+            self.monsters.push({ mobIndex, i, j, id: self.monsters.length })
         }
         pushMonster(0, 0, 0);
         pushMonster(0, 2, 0);
@@ -293,7 +295,9 @@ class WorldMap {
         for (let m of this.monsters) {
             this.paintMob(m.mobIndex, m.i, m.j);
         }
-        this.paintCharacter(this.player.sprite, this.player.i, this.player.j);
+        for (let p of this.players) {
+            this.paintCharacter(p.sprite, p.i, p.j);
+        }
         for (let j = 0; j < this.cellHeight; j++) {
             for (let i = 0; i < this.cellWidth; i++) {
                 var fog = this.fog[i][j];
@@ -354,7 +358,7 @@ class WorldMap {
     }
     update() {
         if (tickNumber < this.nextMoveTick) {
-            return;
+            return [];
         }
         let newPos = { i: this.player.i, j: this.player.j };
         if (input.keysPressed.left) {
@@ -371,19 +375,19 @@ class WorldMap {
         }
         else if (input.keysPressed.s4) {
             input.keysPressed.s4 = false;
-            this.tryEnter();
+            return this.tryEnter();
         }
         if (this.player.i == newPos.i && this.player.j == newPos.j) {
-            return;
+            return [];
         }
         if (!this.isInside(newPos.i, newPos.j)) {
-            return;
+            return [];
         }
         if (this.blockedCells[newPos.i][newPos.j]) {
-            return;
+            return [];
         }
         if (this.fog[newPos.i][newPos.j] != 1) {
-            return;
+            return [];
         }
         this.player.i = newPos.i;
         this.player.j = newPos.j;
@@ -394,21 +398,70 @@ class WorldMap {
             this.rewardTooltip.rewards = [];
         }
         this.nextMoveTick = tickNumber + 10;
+        return [{ t: 'mapMove', id: this.player.id, i: this.player.i, j: this.player.j }];
     }
     tryEnter() {
         for (let i = 0; i < this.monsters.length; i++) {
             const m = this.monsters[i];
             if (m.i == this.player.i && m.j == this.player.j) {
-                this.enterLevel(i);
-                return;
+                return this.enterLevel(i, m);
             }
         }
+        return [];
     }
-    enterLevel(monsterIndex) {                
+    enterLevel(monsterIndex, monster) {
+        if (!this.isServer) {
+            return [{ t: 'mapTryEnterLevel', monsterId: monster.id }]
+        }
         this.monsters.splice(monsterIndex, 1);
         this.computePaths();
         game.worldLevel.startLevel(new LevelContent());
         game.currentView = game.worldLevel;
+        return [{ t: 'mapEnterLevel', world: game.getWorldMsg() }]
+    }
+    onUpdates(msg) {
+        for (let m of msg) {
+            if (m.t === 'mapMove') {
+                const p = this.players.find(p => p.id == m.id);
+                p.i = m.i;
+                p.j = m.j;
+            } else if (m.t === 'mapTryEnterLevel') {
+                const monsterIndex = this.monsters.findIndex(p => p.id == m.monsterId);
+                if (monsterIndex != -1) {
+                    this.enterLevel(monsterIndex, this.monsters[monsterIndex]);
+                }
+            } else if (m.t === 'mapEnterLevel') {                
+                game.refreshWorldFromMsg(m.world)
+            }
+        }
+    }
+
+
+    getWorldMsg() {
+        return {
+            players: this.players.map(p => {
+                return {
+                    id: p.id,
+                    i: p.i,
+                    j: p.j
+                };
+            }),
+            monsters: this.monsters.map(m => {
+                return { id: m.id };
+            }),
+        };
+    }
+    refreshWorldFromMsg(msg) {
+        for (let i = 0; i < this.players.length; i++) {
+            this.players[i].i = msg.players[i].i;
+            this.players[i].j = msg.players[i].j;
+        }
+        for (let i = this.monsters.length - 1; i >= 0; i--) {
+            const id = this.monsters[i].id;
+            if (!msg.monsters.find(m => m.id == id)) {
+                this.monsters.splice(i, 1);
+            }
+        }
     }
 }
 

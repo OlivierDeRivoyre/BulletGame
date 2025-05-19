@@ -71,91 +71,76 @@ class Server {
     static tickDuration = 30;//30ms, it is around 30 ticks per second
     constructor() {
         this.connections = [];
-        const serverPlayer = new Player(0);
-        this.worldLevel = new WorldLevel(true, [serverPlayer], serverPlayer.id);
-
-        game = new Game(true, this.worldLevel);
+        game = new Game(true);
         game.currentView = game.worldMap;
     }
     onConnect(conn) {
         if (!this.isARefreshOfExistingConnection(conn)) {
             this.connections.push(conn);
-            const player = new Player(this.worldLevel.players.length);
-            this.worldLevel.players.push(player);
-            this.initConnection(conn, player);
+            this.initConnection(conn);
         }
         this.removeUnconnectedClients();
         this.sendWorld();
     }
     isARefreshOfExistingConnection(conn) {
         for (let i = 0; i < this.connections.length; i++) {
-            if (this.connections[i].peer == conn.peer) {
-                const player = this.connections[i].player;
-                console.log(logName + `: Player ${player.id} has reconnected`);
-                this.initConnection(conn, player);
+            if (this.connections[i].peer == conn.peer) {                
+                console.log(logName + `: Player ${conn.peer} has reconnected`);
+                this.initConnection(conn);
                 this.connections[i] = conn;
                 return true;
             }
         }
         return false;
     }
-    initConnection(conn, player) {
-        player.connection = conn;
-        conn.player = player;
+    initConnection(conn) {
         const self = this;
         conn.on('data', function (data) {
-            self.onReceiveMsg(player, data);
+            self.onReceiveMsg(data);
         });
     }
     removeUnconnectedClients() {
         let changed = false;
         for (let i = 0; i < this.connections.length; i++) {
-            if (this.connections[i].peerConnection == null || this.connections[i].peerConnection.connectionState != 'connected') {
+            if (this.connections[i].peerConnection == null
+                || this.connections[i].peerConnection.connectionState != 'connected') {
                 this.connections.splice(i, 1);
             }
         }
-        for (let i = 1; i < this.worldLevel.players.length; i++) {// index 0 is the server player
-            if (this.worldLevel.players[i].connection.peerConnection == null
-                || this.worldLevel.players[i].connection.peerConnection.connectionState != 'connected') {
-                this.worldLevel.players.splice(i, 1);
-                changed = true;
-            }
-        }
+        /*     for (let i = 1; i < this.worldLevel.players.length; i++) {// index 0 is the server player
+                 if (this.worldLevel.players[i].connection.peerConnection == null
+                     || this.worldLevel.players[i].connection.peerConnection.connectionState != 'connected') {
+                     this.worldLevel.players.splice(i, 1);
+                     changed = true;
+                 }
+             }*/
         return changed;
     }
     runTick() {
         tickNumber++;
         if (tickNumber % 30 == 0) {
-            if (this.removeUnconnectedClients()) {
-
-                this.sendWorld();
-            }
+            this.removeUnconnectedClients();
         }
         const updates = game.update();
         if (updates.length != 0) {
-            this.broadcastAll({ t: 'updates', updates });
+            this.broadcastAll({ t: 'updates', updates});
         }
         game.paint();
         setTimeout(() => this.runTick(), Server.tickDuration);
     }
     broadcastAll(msg) {
+        msg.tick = tickNumber;
         for (let c of this.connections) {
             c.send(msg);
         }
     }
     sendWorld() {
-        const msg = this.worldLevel.getNewWorldMsg();
-        for (let c of this.connections) {
-            msg.yourId = c.player.id;
-            c.send(msg);
-        }
+        const msg = game.getWorldMsg();
+        this.broadcastAll({t: 'world', world: msg});
     }
-    onReceiveMsg(player, msg) {
+    onReceiveMsg(msg) {
         if (msg.t == 'updates') {
-            this.worldLevel.onUpdates(msg.updates);
-            for (let c of this.connections.filter(c => c.player.id != player.id)) {
-                c.send(msg);
-            }
+            game.onUpdates(msg.updates);
         }
     }
 }
@@ -174,6 +159,10 @@ class Client {
             console.log(logName + ': connect to server');
             this.connection = this.peer.connect(server);
             this.lastConnectTick = tickNumber;
+            if (!this.connection) {
+                return;
+            }
+            game = new Game(false);
             const self = this;
             this.connection.on('data', function (data) {
                 self.onData(data);
@@ -181,7 +170,7 @@ class Client {
         }
     }
     runTick() {
-        tickNumberr++;
+        tickNumber++;
         if (tickNumber % 15 == 0) {
             this.refreshConnection();
         }
@@ -195,12 +184,11 @@ class Client {
         setTimeout(() => this.runTick(), Server.tickDuration);
     }
     onData(msg) {
-        if (msg.t == 'newWorld') {
-            //   this.worldLevel = WorldLevel.newWorld(msg);
-            //   game.currentView = this.worldLevel;
+        if (msg.t == 'world') {
+            game.refreshWorldFromMsg(msg.world);
         }
-        if (msg.t == 'updates' && this.worldLevel != null) {
-            //   this.worldLevel.onUpdates(msg.updates);
+        if (msg.t == 'updates') {
+            game.onUpdates(msg.updates);
         }
     }
 }

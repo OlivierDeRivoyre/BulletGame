@@ -97,25 +97,48 @@ class Screen {
 }
 
 class Game {
-    constructor(isServer, worldLevel) {
+    constructor(isServer) {
         this.isServer = isServer;
-        this.worldLevel = worldLevel;
-        this.worldMap = new WorldMap();
+        const serverPlayer = new Player(0);
+        const clientPlayer = new Player(1);
+        this.players = [serverPlayer, clientPlayer];
+        this.worldLevel = new WorldLevel(isServer, this.players, serverPlayer.id);;
+        this.worldMap = new WorldMap(isServer, this.players);
         this.screen = new Screen();
         this.currentView = null;
+
     }
     update() {
         if (this.currentView == null) {
-            return;
+            return [];
         }
-        this.currentView.update();
-        return [];
+        return this.currentView.update();        
+    }
+    onUpdates(msg){
+        this.currentView.onUpdates(msg);
     }
     paint() {
         if (this.currentView) {
             this.currentView.paint();
         }
         this.screen.scaleOnScreen();
+    }
+    getWorldMsg() {
+        return {
+            tickNumber: tickNumber,
+            worldLevel: this.worldLevel.getWorldMsg(),
+            worldMap: this.worldMap.getWorldMsg(),
+            currentView: this.currentView === this.worldMap ? 'map' : 'level',
+        }
+    }
+    refreshWorldFromMsg(msg) {
+        this.worldMap.refreshWorldFromMsg(msg.worldMap);
+        this.worldLevel.refreshWorldFromMsg(msg.worldLevel);
+        if (msg.currentView == 'map') {
+            this.currentView = this.worldMap;
+        } else {
+            this.currentView = this.worldLevel;
+        }
     }
 }
 let game = null;

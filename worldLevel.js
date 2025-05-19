@@ -8,7 +8,7 @@ class Player {
         this.vy = 0;
         this.inputX = 0;
         this.inputY = 0;
-        this.sprite = getDungeonTileSetHeroSprite(0, 14);
+        this.sprite = getDungeonTileSetHeroSprite(this.id * 5, this.id == 0 ? 14 : 10);
         this.lastHitTick = -999;
         this.lastHealTick = -999;
         this.maxLife = 100;
@@ -846,6 +846,26 @@ class WorldLevel {
             for (let p of this.players) {
                 p.onMessage(m);
             }
+        }
+    }
+    getWorldMsg() {
+        return {
+            players: this.players.map(p => {
+                return {
+                    id: p.id,
+                    x: p.x,
+                    y: p.y,
+                };
+            }),
+            //...
+        }
+    }
+    refreshWorldFromMsg(msg) {
+        for(let i = 0; i < this.players.length; i++){
+            const current = this.players[i]
+            const saved = msg.players[i];
+            current.x = saved.x;
+            current.y = saved.y;
         }
     }
 
