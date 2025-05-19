@@ -409,7 +409,7 @@ class WorldMap {
         this.monsters.splice(monsterIndex, 1);
         this.computePaths();
         game.world.startLevel(new Level());
-        game.screen.currentView = game.world;
+        game.currentView = game.world;
     }
 }
 

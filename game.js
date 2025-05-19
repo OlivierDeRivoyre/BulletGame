@@ -49,7 +49,7 @@ class Input {
             this.keysPressed.s4 = pressed;
         }
         if (event.key == 'Escape') {
-            screen.currentView = game.worldMap;
+            
         }
     }
     keydown(event) {
@@ -153,7 +153,7 @@ class Server {
         this.world = new World(true, [serverPlayer], serverPlayer.id);
 
         game = new Game(true, this.world);
-        screen.currentView = game.worldMap;
+        game.currentView = game.worldMap;
     }
     onConnect(conn) {
         if (!this.isARefreshOfExistingConnection(conn)) {
@@ -205,15 +205,15 @@ class Server {
         tickNumber++;
         if (tickNumber % 30 == 0) {
             if (this.removeUnconnectedClients()) {
-                this.world.arrangeTeams();
+                
                 this.sendWorld();
             }
         }
-        const updates = this.world.update();
+        const updates = game.update();
         if (updates.length != 0) {
             this.broadcastAll({ t: 'updates', updates });
         }
-        screen.paint();
+        game.paint();
         setTimeout(() => this.runTick(), Server.tickDuration);
     }
     broadcastAll(msg) {
@@ -263,22 +263,22 @@ class Client {
         if (tickNumber % 15 == 0) {
             this.refreshConnection();
         }
-        if (this.world != null) {
-            const updates = this.world.update();
+        if (game != null) {
+            const updates = game.update();
             if (updates.length != 0) {
                 this.connection.send({ t: 'updates', updates });
             }
-            screen.paint();
+            game.paint();
         }
         setTimeout(() => this.runTick(), Server.tickDuration);
     }
     onData(msg) {
         if (msg.t == 'newWorld') {
-            this.world = World.newWorld(msg);
-            screen.currentView = this.world;
+         //   this.world = World.newWorld(msg);
+         //   game.currentView = this.world;
         }
         if (msg.t == 'updates' && this.world != null) {
-            this.world.onUpdates(msg.updates);
+         //   this.world.onUpdates(msg.updates);
         }
     }
 }
@@ -626,7 +626,7 @@ class ActionBar {
         }
         if (input.keysPressed.s4 && this.world.exitCell && this.world.exitCell.isPlayerInside(this.player)) {
             input.keyPressed.s4 = false;
-            this.world.exitCell.trigger();            
+            this.world.exitCell.trigger();
             return;
         }
         if (tickNumber % 30 == 0) {
@@ -909,7 +909,7 @@ class Mob {
         this.life = Math.max(0, this.life - damage);
         this.lastHitTick = tickNumber;
         this.brain.onHit();
-        if(this.life <= 0 && !world.exitCell){
+        if (this.life <= 0 && !world.exitCell) {
             world.exitCell = new ExitCell(this.initialX, this.initialY);
         }
     }
@@ -1103,9 +1103,9 @@ class ExitCell {
         this.sprite.paint(canvasX, canvasY)
     }
     trigger() {
-        game.screen.currentView = game.worldMap;
+        game.currentView = game.worldMap;
     }
-    isPlayerInside(player){
+    isPlayerInside(player) {
         return distanceSquare(this, player) < square(32);
     }
 }
@@ -1150,10 +1150,6 @@ class World {
         this.annimAdded = true;
     }
     update() {
-        if (screen.currentView != this && screen.currentView != null) {
-            screen.currentView.update();
-            return [];
-        }
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
@@ -1303,17 +1299,14 @@ class Screen {
         this.screenCanvas = document.getElementById("myCanvas");
         this.screenCanvas.style.imageRendering = 'pixelated';
         this.screenCtx = this.screenCanvas.getContext("2d");
-        this.currentView = null;
+
         this.windowResize();
         window.addEventListener('resize', () => this.windowResize(), false);
         window.addEventListener('mousemove', (e) => this.mouseMove(e), false);
         window.addEventListener('mousedown', (e) => this.mouseDown(e), false);
         window.addEventListener('mouseup', (e) => this.mouseUp(e), false);
     }
-    paint() {
-        if (this.currentView) {
-            this.currentView.paint();
-        }
+    scaleOnScreen() {
         this.screenCtx.imageSmoothingEnabled = false;
         this.screenCtx.clearRect(0, 0, this.screenCanvas.width, this.screenCanvas.height);
         this.screenCtx.drawImage(canvas,
@@ -1369,14 +1362,27 @@ class Screen {
         }
     }
 }
-const screen = new Screen();
 
 class Game {
     constructor(isServer, world) {
         this.isServer = isServer;
         this.world = world;
         this.worldMap = new WorldMap();
-        this.screen = screen;
+        this.screen = new Screen();
+        this.currentView = null;
+    }
+    update() {
+        if(this.currentView == null){
+            return;            
+        }
+        this.currentView.update();
+        return [];
+    }
+    paint() {
+        if (this.currentView) {
+            this.currentView.paint();
+        }
+        this.screen.scaleOnScreen();
     }
 }
 let game = null;
