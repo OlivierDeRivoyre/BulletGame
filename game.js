@@ -49,7 +49,7 @@ class Input {
             this.keysPressed.s4 = pressed;
         }
         if (event.key == 'Escape') {
-            
+
         }
     }
     keydown(event) {
@@ -150,20 +150,19 @@ class Server {
     constructor() {
         this.connections = [];
         const serverPlayer = new Player(0);
-        this.world = new World(true, [serverPlayer], serverPlayer.id);
+        this.worldLevel = new WorldLevel(true, [serverPlayer], serverPlayer.id);
 
-        game = new Game(true, this.world);
+        game = new Game(true, this.worldLevel);
         game.currentView = game.worldMap;
     }
     onConnect(conn) {
         if (!this.isARefreshOfExistingConnection(conn)) {
             this.connections.push(conn);
-            const player = new Player(this.world.players.length);
-            this.world.players.push(player);
+            const player = new Player(this.worldLevel.players.length);
+            this.worldLevel.players.push(player);
             this.initConnection(conn, player);
         }
         this.removeUnconnectedClients();
-        this.world.arrangeTeams();
         this.sendWorld();
     }
     isARefreshOfExistingConnection(conn) {
@@ -193,9 +192,10 @@ class Server {
                 this.connections.splice(i, 1);
             }
         }
-        for (let i = 1; i < this.world.players.length; i++) {// index 0 is the server player
-            if (this.world.players[i].connection.peerConnection == null || this.world.players[i].connection.peerConnection.connectionState != 'connected') {
-                this.world.players.splice(i, 1);
+        for (let i = 1; i < this.worldLevel.players.length; i++) {// index 0 is the server player
+            if (this.worldLevel.players[i].connection.peerConnection == null
+                || this.worldLevel.players[i].connection.peerConnection.connectionState != 'connected') {
+                this.worldLevel.players.splice(i, 1);
                 changed = true;
             }
         }
@@ -205,7 +205,7 @@ class Server {
         tickNumber++;
         if (tickNumber % 30 == 0) {
             if (this.removeUnconnectedClients()) {
-                
+
                 this.sendWorld();
             }
         }
@@ -222,7 +222,7 @@ class Server {
         }
     }
     sendWorld() {
-        const msg = this.world.getNewWorldMsg();
+        const msg = this.worldLevel.getNewWorldMsg();
         for (let c of this.connections) {
             msg.yourId = c.player.id;
             c.send(msg);
@@ -230,7 +230,7 @@ class Server {
     }
     onReceiveMsg(player, msg) {
         if (msg.t == 'updates') {
-            this.world.onUpdates(msg.updates);
+            this.worldLevel.onUpdates(msg.updates);
             for (let c of this.connections.filter(c => c.player.id != player.id)) {
                 c.send(msg);
             }
@@ -242,7 +242,7 @@ class Client {
     constructor(peer) {
         this.peer = peer;
         this.connection = null;
-        this.world = null;
+        this.worldLevel = null;
         this.lastConnectTick = -999999;
         this.refreshConnection();
     }
@@ -274,11 +274,11 @@ class Client {
     }
     onData(msg) {
         if (msg.t == 'newWorld') {
-         //   this.world = World.newWorld(msg);
-         //   game.currentView = this.world;
+            //   this.worldLevel = WorldLevel.newWorld(msg);
+            //   game.currentView = this.worldLevel;
         }
-        if (msg.t == 'updates' && this.world != null) {
-         //   this.world.onUpdates(msg.updates);
+        if (msg.t == 'updates' && this.worldLevel != null) {
+            //   this.worldLevel.onUpdates(msg.updates);
         }
     }
 }
@@ -401,7 +401,7 @@ class Player {
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
     }
-    updateLocalPlayer(input, world) {
+    updateLocalPlayer(input, worldLevel) {
         let changed = false;
         if (this.life <= 0) {
             return false;
@@ -547,7 +547,7 @@ class Player {
             this.isJumping = msg.ij;
         }
     }
-    onHit(damage, world, projectile) {
+    onHit(damage, worldLevel, projectile) {
         for (let i = 0; i < this.buffs.length; i++) {
             if (this.buffs[i].id == BuffId.shield) {
                 this.buffs.splice(i, 1);
@@ -558,7 +558,7 @@ class Player {
         this.lastHitTick = tickNumber;
         this.life = Math.max(0, this.life - damage);
     }
-    onHeal(heal, world, projectile) {
+    onHeal(heal, worldLevel, projectile) {
         this.lastHealTick = tickNumber;
         this.life = Math.min(this.maxLife, this.life + heal);
     }
@@ -576,9 +576,9 @@ class Player {
 
 class ActionBar {
     static MaxSpells = 5;
-    constructor(player, world) {
+    constructor(player, worldLevel) {
         this.player = player;
-        this.world = world;
+        this.worldLevel = worldLevel;
         this.spells = new Array(ActionBar.MaxSpells);
         this.basicAttack = allSpells.basicAttack;
         this.spells[0] = allSpells.curseGround;
@@ -616,7 +616,7 @@ class ActionBar {
         return true;
     }
     castSpell(spell) {
-        spell.trigger(this.player, this.world.camera.toWorldCoord(input.mouse), this.world);
+        spell.trigger(this.player, this.worldLevel.camera.toWorldCoord(input.mouse), this.worldLevel);
         spell.lastAttackTick = tickNumber;
         this.mana = Math.max(0, this.mana - spell.mana);
     }
@@ -624,9 +624,9 @@ class ActionBar {
         if (this.player.life <= 0) {
             return;
         }
-        if (input.keysPressed.s4 && this.world.exitCell && this.world.exitCell.isPlayerInside(this.player)) {
+        if (input.keysPressed.s4 && this.worldLevel.exitCell && this.worldLevel.exitCell.isPlayerInside(this.player)) {
             input.keyPressed.s4 = false;
-            this.world.exitCell.trigger();
+            this.worldLevel.exitCell.trigger();
             return;
         }
         if (tickNumber % 30 == 0) {
@@ -743,9 +743,9 @@ function computeDistance(coord1, coord2) {
     return Math.sqrt(distanceSquare(coord1, coord2));
 }
 class AggroMobBrain {
-    init(mob, world, mobSeed) {
+    init(mob, worldLevel, mobSeed) {
         this.mob = mob;
-        this.world = world;
+        this.worldLevel = worldLevel;
         this.intialCoord = { x: this.mob.x, y: this.mob.y };
         this.targetCoord = null;
         this.targetPlayer = null;
@@ -756,7 +756,7 @@ class AggroMobBrain {
     }
     update() {
         if (this.targetPlayer != null && this.targetPlayer.life <= 0) {
-            this.targetPlayer = this.world.findNearestPlayer(this.mob);
+            this.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
         }
         if (this.targetCoord != null && distanceSquare(this.mob, this.targetCoord) < square(this.speed)) {
             this.targetCoord = null;
@@ -765,12 +765,12 @@ class AggroMobBrain {
         if (this.targetPlayer != null) {
             const distanceToPlayer = distanceSquare(this.mob, this.targetPlayer);
             if (distanceToPlayer < square((this.fireRange + 3) * 64)) {
-                this.mob.tryShoot(this.targetPlayer.getCenterCoord(), this.world);
+                this.mob.tryShoot(this.targetPlayer.getCenterCoord(), this.worldLevel);
             }
             if (this.targetCoord != null && tickNumber < this.walkAroundPlayerUntil) {
                 destCoord = this.targetCoord;
             } else if (distanceToPlayer < square(64 * 1.5)) {
-                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.world);
+                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.worldLevel);
                 this.walkAroundPlayerUntil = tickNumber + 30 * 1;
                 destCoord = this.targetCoord;
             } else {
@@ -779,7 +779,7 @@ class AggroMobBrain {
             }
         } else {
             if (this.targetCoord == null) {
-                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.world);
+                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.worldLevel);
             }
             destCoord = this.targetCoord;
         }
@@ -799,10 +799,10 @@ class AggroMobBrain {
     }
     onHit() {
         if (this.targetPlayer == null) {
-            this.targetPlayer = this.world.findNearestPlayer(this.mob);
+            this.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
         }
     }
-    static getRandomTargetCoord(mob, initialCoord, world) {
+    static getRandomTargetCoord(mob, initialCoord, worldLevel) {
 
         function getNextCoord(quarter) {
             const angus = Math.PI * 2 * (quarter % 8) / 8;
@@ -827,7 +827,7 @@ class AggroMobBrain {
         mob.seed = getNextRand(mob.seed);
         for (let i = 0; i < 8; i++) {
             const nextCoord = getNextCoord(mob.seed + i);
-            const targetCell = world.map.getCell(nextCoord.x, nextCoord.y);
+            const targetCell = worldLevel.map.getCell(nextCoord.x, nextCoord.y);
             if (targetCell.canWalk) {
                 return nextCoord;
             }
@@ -854,8 +854,8 @@ class Mob {
         this.lookLeft = false;
         this.createExitCell = false;
     }
-    init(world, mobSeed) {
-        this.brain.init(this, world, mobSeed);
+    init(worldLevel, mobSeed) {
+        this.brain.init(this, worldLevel, mobSeed);
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -875,11 +875,11 @@ class Mob {
             this.lookLeft = this.x < oldX;
         }
     }
-    tryShoot(target, world) {
+    tryShoot(target, worldLevel) {
         if (tickNumber < this.lastShootTick + this.spell.cooldown * 30) {
             return;
         }
-        if (this.spell.trigger(this, target, world)) {
+        if (this.spell.trigger(this, target, worldLevel)) {
             this.lastShootTick = tickNumber;
         }
     }
@@ -905,15 +905,15 @@ class Mob {
         ctx.fillStyle = "green";
         ctx.fillRect(canvasX, top + 2, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
     }
-    onHit(damage, world, projectile) {
+    onHit(damage, worldLevel, projectile) {
         this.life = Math.max(0, this.life - damage);
         this.lastHitTick = tickNumber;
         this.brain.onHit();
-        if (this.life <= 0 && !world.exitCell) {
-            world.exitCell = new ExitCell(this.initialX, this.initialY);
+        if (this.life <= 0 && !worldLevel.exitCell) {
+            worldLevel.exitCell = new ExitCell(this.initialX, this.initialY);
         }
     }
-    onHeal(heal, world, projectile) {
+    onHeal(heal, worldLevel, projectile) {
     }
     addBuff(buff) {
         buff.endTick = tickNumber + buff.duration * 30;
@@ -1021,7 +1021,7 @@ class Cell {
     }
 }
 
-class Map {
+class LevelBackground {
     constructor() {
         this.borderCell = new Cell([cellSpriteFactory.water], { canWalk: false });
         this.cells = new Array(10);
@@ -1061,36 +1061,6 @@ class Map {
     }
 }
 
-class Level {
-    constructor() {
-        this.map = new Map();
-        this.mobs = [];
-        this.mobs.push(Level.createMob1At({ i: 1, j: 1 }));
-        this.mobs.push(Level.createMob1At({ i: 5, j: 4 }));
-
-        this.mobs.push(Level.createMob1At({ i: 12, j: 2 }));
-        this.mobs.push(Level.createMob1At({ i: 12, j: 4 }));
-        this.mobs.push(Level.createMob1At({ i: 12, j: 6 }));
-
-        this.mobs.push(Level.createMob1At({ i: 22, j: 2 }));
-        this.mobs.push(Level.createMob1At({ i: 22, j: 4 }));
-        this.mobs.push(Level.createMob1At({ i: 22, j: 6 }));
-        this.mobs.push(Level.createMob1At({ i: 24, j: 3 }));
-        this.mobs.push(Level.createMob1At({ i: 24, j: 5 }));
-        this.mobs.push(Level.createMob1At({ i: 24, j: 7 }));
-        this.mobs.push(Level.createMob1At({ i: 26, j: 3 }));
-        this.mobs.push(Level.createMob1At({ i: 26, j: 5 }));
-        this.mobs.push(Level.createMob1At({ i: 26, j: 7 }));
-        this.mobs.push(Level.createMob1At({ i: 28, j: 3 }));
-        this.mobs.push(Level.createMob1At({ i: 28, j: 5 }));
-        this.mobs.push(Level.createMob1At({ i: 28, j: 7 }));
-    }
-    static createMob1At(cell) {
-        const mob = new Mob(getDungeonTileSetVilainSprite(0, 12), new AggroMobBrain(),
-            mobSpells.basicAttack, cell.i * 64, cell.j * 64);
-        return mob;
-    }
-}
 class ExitCell {
     constructor(x, y) {
         this.x = x;
@@ -1110,7 +1080,7 @@ class ExitCell {
     }
 }
 let tickNumber = 0;
-class World {
+class WorldLevel {
     constructor(isServer, players, localPlayerId) {
         this.isServer = isServer;
         this.players = players;
@@ -1121,7 +1091,7 @@ class World {
         }
         this.camera = new CameraOffset(this.localPlayer);
         this.actionBar = new ActionBar(this.localPlayer, this);
-        this.level = new Level();
+        this.level = new LevelContent();
         this.map = this.level.map;
         this.mobs = this.level.mobs;
         this.projectiles = [];
@@ -1258,9 +1228,9 @@ class World {
             player.team = p.t;
             return player;
         });
-        const world = new World(false, players, msg.yourId);
+        const worldLevel = new WorldLevel(false, players, msg.yourId);
 
-        return world;
+        return worldLevel;
     }
     onUpdates(updates) {
         for (let m of updates) {
@@ -1364,16 +1334,16 @@ class Screen {
 }
 
 class Game {
-    constructor(isServer, world) {
+    constructor(isServer, worldLevel) {
         this.isServer = isServer;
-        this.world = world;
+        this.worldLevel = worldLevel;
         this.worldMap = new WorldMap();
         this.screen = new Screen();
         this.currentView = null;
     }
     update() {
-        if(this.currentView == null){
-            return;            
+        if (this.currentView == null) {
+            return;
         }
         this.currentView.update();
         return [];

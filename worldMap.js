@@ -408,8 +408,8 @@ class WorldMap {
     enterLevel(monsterIndex) {                
         this.monsters.splice(monsterIndex, 1);
         this.computePaths();
-        game.world.startLevel(new Level());
-        game.currentView = game.world;
+        game.worldLevel.startLevel(new LevelContent());
+        game.currentView = game.worldLevel;
     }
 }
 
