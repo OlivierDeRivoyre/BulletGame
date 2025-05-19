@@ -1,6 +1,6 @@
 const pipoBuildingTileSet = loadImg("pipo-map001");
 const pipoGroundTileSet = loadImg("pipo-map001_at");
-const debug = !!params.get("debug");;
+const debug = !!new URLSearchParams(window.location.search).get("debug");;
 class WorldMap {
     constructor() {
         this.cellPx = 48;
