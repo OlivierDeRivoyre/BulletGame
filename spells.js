@@ -8,19 +8,22 @@ function getShikashiTile(i, j) {
 }
 const emptySprite = getShikashiTile(10, 1);
 const deadSprite = getShikashiTile(0, 0);
+class MySound {
+    constructor(fileName, volume) {
+        this.audio = new Audio("sound/" + fileName + ".wav");;
+        this.audio.volume = volume !== undefined ? volume : 1;
+    }
+    play() {
+        this.audio.play().catch((err)=>{});
+    }
+}
 class Sounds {
     constructor() {
-        function loadSound(name) {
-            return new Audio("sound/" + name + ".wav");
-        }
-        this.lazer = loadSound("lazer");
-        this.shotgun2b = loadSound("shotgun-2b");
-        this.shotgun2b.volume = 0.5;
-        this.magicMissile = loadSound("magicMissile");
-        this.magicMissile.volume = 0.5;
-        this.bubble = loadSound("bubble");
-        this.houseKick = loadSound("houseKick");
-        this.houseKick.volume = 0.3;
+        this.lazer = new MySound("lazer");
+        this.shotgun2b = new MySound("shotgun-2b", 0.5);
+        this.magicMissile = new MySound("magicMissile", 0.5);
+        this.bubble = new MySound("bubble");
+        this.houseKick = new MySound("houseKick", 0.3);
     }
 }
 const sounds = new Sounds();
@@ -347,6 +350,10 @@ class AllSpells {
         this.rootingProjectile = AllSpells.rootingProjectile();
         this.healProjectile = AllSpells.healProjectile();
         this.protectSpell = AllSpells.protectSpell();
+
+        for (let id of Object.keys(this)) {
+            this[id].id = id;
+        }
     }
     static noSpell() {
         return new NoSpell();

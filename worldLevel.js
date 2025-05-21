@@ -223,12 +223,12 @@ class ActionBar {
     }
     update(input) {
         if (this.player.life <= 0) {
-            return;
+            return [];
         }
         if (input.keysPressed.s4 && this.worldLevel.exitCell && this.worldLevel.exitCell.isPlayerInside(this.player)) {
             input.keyPressed.s4 = false;
             this.worldLevel.exitCell.trigger();
-            return;
+            return [];//TODO
         }
         if (tickNumber % 30 == 0) {
             this.mana = Math.min(this.maxMana, this.mana + this.regenMana);
@@ -238,21 +238,45 @@ class ActionBar {
                 this.castSpell(this.castingSpell)
                 this.castingSpell = null;
             }
-            return;
+            return [];
         }
 
+        let castedSpell = null;
         if (input.mouse2Clicked && this.tryTrigger(this.spells[4])) {
+            castedSpell = this.spells[4];
         }
         else if (input.keysPressed.s1 && this.tryTrigger(this.spells[0])) {
+            castedSpell = this.spells[0];
         }
         else if (input.keysPressed.s2 && this.tryTrigger(this.spells[1])) {
+            castedSpell = this.spells[1];
         }
         else if (input.keysPressed.s3 && this.tryTrigger(this.spells[2])) {
+            castedSpell = this.spells[2];
         }
         else if (input.keysPressed.s4 && this.tryTrigger(this.spells[3])) {
+            castedSpell = this.spells[3];
         }
         else if (input.mouseClicked && this.tryTrigger(this.basicAttack)) {
+            castedSpell = this.basicAttack;
         }
+        if (castedSpell == null) {
+            return [];
+        }
+        const target = this.worldLevel.camera.toWorldCoord(input.mouse);
+        return [{
+            t: 'playerCastSpell',
+            spell: castedSpell.id,
+            target: target,
+            playerId: this.player.id,
+            playerX: this.player.x,
+            playerY: this.player.y,
+        }]
+    }
+    onMessage(m) {
+        const player = this.worldLevel.players[m.playerId];
+        const spell = allSpells[m.spell];
+        spell.trigger(player, m.target, this.worldLevel);       
     }
     paint() {
         if (this.castingSpell != null) {
@@ -724,13 +748,13 @@ class WorldLevel {
         if (changed) {
             updates.push(this.localPlayer.getMsg());
         }
-        this.moveProjectiles();
+        this.moveProjectiles(this.projectiles);
         for (let m of this.mobs) {
             m.update(this);
         }
         this.checkBulletsHitOnAll(this.projectiles)
-        this.actionBar.update(input, this);
-
+        const playerActions = this.actionBar.update(input, this);
+        updates.push(...playerActions);
         return updates;
     }
     moveProjectiles(projectiles) {
@@ -813,6 +837,10 @@ class WorldLevel {
         for (let m of updates) {
             if (m.t === 'playerMove') {
                 this.players[m.id].onMessage(m);
+            } else if (m.t === 'playerCastSpell') {
+                this.actionBar.onMessage(m);
+            } else {
+                console.log("WorldLevel.onUpdates() unknown: " + m.t)
             }
         }
     }
