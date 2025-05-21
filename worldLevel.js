@@ -720,27 +720,30 @@ class WorldLevel {
         for (let p of this.players) {
             p.update();
         }
+        this.camera.update();
         if (changed) {
             updates.push(this.localPlayer.getMsg());
         }
-        this.camera.update();
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            if (!this.projectiles[i].update(this)) {
-                this.projectiles.splice(i, 1);
-            }
-        }
+        this.moveProjectiles();
         for (let m of this.mobs) {
             m.update(this);
         }
-        this.checkBulletsHitOnAll()
+        this.checkBulletsHitOnAll(this.projectiles)
         this.actionBar.update(input, this);
 
         return updates;
     }
-    checkBulletsHitOnAll() {
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            if (!this.checkBulletHitOnAll(this.projectiles[i])) {
-                this.projectiles.splice(i, 1);
+    moveProjectiles(projectiles) {
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            if (!projectiles[i].update(this)) {
+                projectiles.splice(i, 1);
+            }
+        }
+    }
+    checkBulletsHitOnAll(projectiles) {
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            if (!this.checkBulletHitOnAll(projectiles[i])) {
+                projectiles.splice(i, 1);
             }
         }
     }

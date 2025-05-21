@@ -413,7 +413,7 @@ class WorldMap {
         if (!this.isServer) {
             return [{ t: 'mapTryEnterLevel', monsterId: monster.id }]
         } else {
-            this.enterLevel(monsterIndex, monster);
+            return this.enterLevel(monsterIndex, monster);
         }
     }
     enterLevel(monsterIndex, monster) {

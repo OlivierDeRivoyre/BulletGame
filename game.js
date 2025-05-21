@@ -111,8 +111,9 @@ class Game {
     update() {
         if (this.currentView == null) {
             return [];
-        }
-        return this.currentView.update();
+        }        
+        const updates = this.currentView.update();        
+        return updates;
     }
     onUpdates(msg) {
         return this.currentView.onUpdates(msg);
