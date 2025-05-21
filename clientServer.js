@@ -140,7 +140,10 @@ class Server {
     }
     onReceiveMsg(msg) {
         if (msg.t == 'updates') {
-            game.onUpdates(msg.updates);
+            const response = game.onUpdates(msg.updates);
+            if(response && response.length > 0){
+                this.broadcastAll({ t: 'updates', updates: response});
+            }
         }
     }
 }

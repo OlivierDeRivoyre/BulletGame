@@ -404,10 +404,17 @@ class WorldMap {
         for (let i = 0; i < this.monsters.length; i++) {
             const m = this.monsters[i];
             if (m.i == this.player.i && m.j == this.player.j) {
-                return this.enterLevel(i, m);
+                return this.tryEnterLevel(i, m);
             }
         }
         return [];
+    }
+    tryEnterLevel(monsterIndex, monster) {
+        if (!this.isServer) {
+            return [{ t: 'mapTryEnterLevel', monsterId: monster.id }]
+        } else {
+            this.enterLevel(monsterIndex, monster);
+        }
     }
     enterLevel(monsterIndex, monster) {
         if (!this.isServer) {
@@ -428,7 +435,7 @@ class WorldMap {
             } else if (m.t === 'mapTryEnterLevel') {
                 const monsterIndex = this.monsters.findIndex(p => p.id == m.monsterId);
                 if (monsterIndex != -1) {
-                    this.enterLevel(monsterIndex, this.monsters[monsterIndex]);
+                    return this.enterLevel(monsterIndex, this.monsters[monsterIndex]);
                 }
             } else if (m.t === 'mapEnterLevel') {                
                 game.refreshWorldFromMsg(m.world)

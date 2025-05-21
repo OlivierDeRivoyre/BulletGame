@@ -77,24 +77,6 @@ class Player {
                 return 0;
             }
             return Math.sign(input) * maxSpeed;
-
-            const ratio = Math.abs(v) < maxSpeed * 0.5 ? 1
-                : Math.abs(v) < maxSpeed * 0.8 ? 0.5
-                    : 0.3;
-            const acc = ratio * 2;
-            const newV = v + input * acc;
-            const maxV = input * maxSpeed;
-            if (input < 0) {
-                return Math.max(newV, maxV);
-            } else if (input > 0) {
-                return Math.min(newV, maxV);
-            } else {
-                let newV = v * 0.5;
-                if (Math.abs(newV) < 0.1) {
-                    newV = 0;
-                }
-                return newV;
-            }
         }
         let targetVx = getNewSpeed(this.vx, this.inputX);
         let targetVy = getNewSpeed(this.vy, this.inputY);
@@ -690,11 +672,11 @@ class ExitCell {
 }
 
 class WorldLevel {
-    constructor(isServer, players, localPlayerId) {
+    constructor(isServer, players) {
         this.isServer = isServer;
         this.players = players;
         this.mouse = null;
-        this.localPlayer = players.find(p => p.id == localPlayerId);
+        this.localPlayer = players[isServer ? 0 : 1];
         if (!this.localPlayer) {
             throw new Error(`Player not found ${localPlayerId}`);
         }
@@ -733,9 +715,13 @@ class WorldLevel {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
         }
+        const updates = [];
         const changed = this.localPlayer.updateLocalPlayer(input, this);
         for (let p of this.players) {
             p.update();
+        }
+        if (changed) {
+            updates.push(this.localPlayer.getMsg());
         }
         this.camera.update();
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -748,7 +734,6 @@ class WorldLevel {
         }
         this.checkBulletsHitOnAll()
         this.actionBar.update(input, this);
-        const updates = [];
 
         return updates;
     }
@@ -820,50 +805,43 @@ class WorldLevel {
         ctx.fillStyle = 'red';
         ctx.fill();
     }
-    getNewWorldMsg() {
-        return {
-            t: 'newWorld',
-            p: this.players.map(p => { return { id: p.id, x: p.x, y: p.y, r: p.radius, t: p.team } }),
-            b: { x: this.ball.x, y: this.ball.y },
-            yourId: '',
-        }
-    }
-    static newWorld(msg) {
-        const players = msg.p.map(p => {
-            let player = new Player(p.id);
-            player.x = p.x;
-            player.y = p.y;
-            player.radius = p.r;
-            player.team = p.t;
-            return player;
-        });
-        const worldLevel = new WorldLevel(false, players, msg.yourId);
 
-        return worldLevel;
-    }
     onUpdates(updates) {
         for (let m of updates) {
-            for (let p of this.players) {
-                p.onMessage(m);
+            if (m.t === 'playerMove') {
+                this.players[m.id].onMessage(m);
             }
         }
     }
     getWorldMsg() {
         return {
-            players: this.players.map(p => {
-                return {
-                    id: p.id,
-                    x: p.x,
-                    y: p.y,
-                };
-            }),
+            players: this.players.map(p => ({
+                id: p.id,
+                x: p.x,
+                y: p.y,
+                life: p.life,
+                maxLife: p.maxLife,
+            })),
+            mobs: this.mobs.map(m => ({
+                id: m.id,
+                x: m.x,
+                y: m.y,
+                life: m.life,
+                // ...
+            })),
             //...
         }
     }
     refreshWorldFromMsg(msg) {
-        for(let i = 0; i < this.players.length; i++){
+        for (let i = 0; i < this.players.length; i++) {
             const current = this.players[i]
             const saved = msg.players[i];
+            current.x = saved.x;
+            current.y = saved.y;
+        }
+        for (let i = 0; i < this.mobs.length; i++) {
+            const current = this.mobs[i]
+            const saved = msg.mobs[i];
             current.x = saved.x;
             current.y = saved.y;
         }

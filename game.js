@@ -112,10 +112,10 @@ class Game {
         if (this.currentView == null) {
             return [];
         }
-        return this.currentView.update();        
+        return this.currentView.update();
     }
-    onUpdates(msg){
-        this.currentView.onUpdates(msg);
+    onUpdates(msg) {
+        return this.currentView.onUpdates(msg);
     }
     paint() {
         if (this.currentView) {
