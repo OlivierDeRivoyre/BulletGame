@@ -265,8 +265,9 @@ class ActionBar {
         }
         if (input.keysPressed.s4 && this.worldLevel.exitCell && this.worldLevel.exitCell.isPlayerInside(this.player)) {
             input.keyPressed.s4 = false;
-            this.worldLevel.exitCell.trigger();
-            return;//TODO
+            const msg = this.worldLevel.exitCell.trigger(this.worldLevel);
+            this.worldLevel.updates.push(msg);
+            return;
         }
         if (tickNumber % 30 == 0) {
             this.mana = Math.min(this.maxMana, this.mana + this.regenMana);
@@ -767,8 +768,15 @@ class ExitCell {
         const canvasY = camera.toCanvasY(this.y);
         this.sprite.paint(canvasX, canvasY)
     }
-    trigger() {
-        game.currentView = game.worldMap;
+    trigger(worldLevel) {
+        if (worldLevel.isServer) {
+            game.currentView = game.worldMap;
+            return { t: 'exitLevel' };
+        } else {
+            game.currentView = game.worldMap;
+            return { t: 'exitLevelRequest' };
+        }
+
     }
     isPlayerInside(player) {
         return distanceSquare(this, player) < square(32);
@@ -817,7 +825,7 @@ class WorldLevel {
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
-        }      
+        }
         const changed = this.localPlayer.updateLocalPlayer(input, this);
         for (let p of this.players) {
             p.update();
@@ -918,8 +926,19 @@ class WorldLevel {
                 this.actionBar.onMessage(m);
             } else if (m.t === 'mobHit') {
                 this.mobs[m.id].refreshFromMsg(m);
-            } else {
-                console.log("WorldLevel.onUpdates() unknown: " + m.t)
+            } else if (m.t == 'exitLevelRequest') {
+                if (this.isServer && this.exitCell) {
+                    return this.exitCell.trigger(this);
+                                        
+                }
+            } else if (m.t == 'exitLevel') {
+                if (!this.isServer) {
+                    game.currentView = game.worldMap;                    
+                }
+            }
+            else {
+                console.log("WorldLevel.onUpdates() unknown: " + m.t);
+                console.dir(m);
             }
         }
     }
