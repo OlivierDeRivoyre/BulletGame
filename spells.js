@@ -14,7 +14,7 @@ class MySound {
         this.audio.volume = volume !== undefined ? volume : 1;
     }
     play() {
-        this.audio.play().catch((err)=>{});
+        this.audio.play().catch((err) => { });
     }
 }
 class Sounds {
@@ -41,14 +41,14 @@ class BulletProjectile {
         ctx.fillStyle = this.color;
         ctx.fillRect(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius);
     }
-    hit(character, worldLevel) {
-        character.onHit(this.damage, worldLevel, this);
+    hit(character, worldLevel, fromCharacter) {
+        character.onHit(this.damage, worldLevel, this, fromCharacter);
         return false;
     }
 }
 class RootingProjectile {
     constructor() {
-        this.sprite = getRavenSprite(1, 48);
+        this.sprite = buffSprites.root;
         this.spriteCorrectAngus = -0.75 * Math.PI;
         this.speed = 8;
         this.range = 5;
@@ -61,9 +61,9 @@ class RootingProjectile {
         this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius,
             anim.angus + this.spriteCorrectAngus);
     }
-    hit(character, worldLevel) {
-        character.addBuff(new Buff(BuffId.root, this.sprite, this.rootDuration));
-        character.onHit(this.damage, worldLevel, this);
+    hit(character, worldLevel, fromCharacter) {
+        character.addBuff(new Buff(BuffId.root, allBuffTypes.root, this.rootDuration), fromCharacter);
+        character.onHit(this.damage, worldLevel, this, fromCharacter);
         return false;
     }
 }
@@ -81,8 +81,8 @@ class HealingProjectile {
         const angus = tickNumber * -0.25;
         this.sprite.paintRotate(x - this.radius, y - this.radius, 2 * this.radius, 2 * this.radius, angus);
     }
-    hit(character, worldLevel) {
-        character.onHit(this.damage, worldLevel, this);
+    hit(character, worldLevel, fromCharacter) {
+        character.onHit(this.damage, worldLevel, this, fromCharacter);
         return false;
     }
 }
@@ -101,14 +101,14 @@ class HealAreaProjectile {
             this.sprite.paintScale(x + r * Math.cos(angus), y + r * Math.sin(angus), 12, 12);
         }
     }
-    checkHit(projectile, character, worldLevel) {
-        if (projectile.tick != 1) {
+    checkHit(anim, character, worldLevel) {
+        if (anim.tick != 1) {
             return true;
         }
-        if (!ProjectileAnim.isHitting(character, projectile, this.radius * 64)) {
+        if (!ProjectileAnim.isHitting(character, anim, this.radius * 64)) {
             return true;
         }
-        character.onHeal(this.heal, worldLevel, this);
+        character.onHeal(this.heal, worldLevel, this, anim.fromCharacter);
         return true;
     }
 }
@@ -126,7 +126,7 @@ class CircleAreaProjectile {
         //this.sprite.paintScale(x - pxRadius, y - pxRadius, pxRadius * 2, pxRadius * 2, angus);
         this.sprite.paintRotate(x - pxRadius, y - pxRadius, pxRadius * 2, pxRadius * 2, angus);
     }
-    checkHit(projectile, character, worldLevel) {
+    checkHit(projectile, character, worldLevel, fromCharacter) {
         const period = Math.ceil(30 * this.periodSec);
         if (projectile.tick % period != 1) {
             return true;
@@ -134,10 +134,10 @@ class CircleAreaProjectile {
         if (!ProjectileAnim.isHitting(character, projectile, this.radius * 64)) {
             return true;
         }
-        return this.hit(character, worldLevel);
+        return this.hit(character, worldLevel, fromCharacter);
     }
-    hit(character, worldLevel) {
-        character.onHit(this.damage, worldLevel, this);
+    hit(character, worldLevel, fromCharacter) {
+        character.onHit(this.damage, worldLevel, this, fromCharacter);
         return true;//keep alive the anim
     }
 }
@@ -149,12 +149,16 @@ class ProjectileAnim {
         const r2 = square(cRadius + bulletRadius);
         return d < r2;
     }
-    constructor(projectile, from, to) {
+    constructor(projectile, from, to, fromCharacter) {
         this.projectile = projectile;
         const range = this.projectile.range * 64;
         const speed = this.projectile.speed;
         this.x = from.x;
         this.y = from.y;
+        this.fromCharacter = fromCharacter;
+        if (!fromCharacter) {
+            throw new Error("fromChar undefined");
+        }
         const hypo = Math.sqrt(square(to.x - this.x) + square(to.y - this.y));
         if (hypo < 0.001) {
             this.vx = speed;
@@ -179,7 +183,7 @@ class ProjectileAnim {
             return true;
         }
         if (this.endFunc != null) {
-            this.endFunc({ x: this.x, y: this.y }, worldLevel);
+            this.endFunc({ x: this.x, y: this.y }, worldLevel, this.fromCharacter);
         }
         return false;
     }
@@ -187,9 +191,9 @@ class ProjectileAnim {
         if (!ProjectileAnim.isHitting(character, this, this.projectile.radius)) {
             return true;
         }
-        const alive = this.projectile.hit(character, worldLevel);
+        const alive = this.projectile.hit(character, worldLevel, this.fromCharacter);
         if (!alive && this.endFunc != null) {
-            this.endFunc({ x: this.x, y: this.y }, worldLevel);
+            this.endFunc({ x: this.x, y: this.y }, worldLevel, this.fromCharacter);
         }
         return alive;
     }
@@ -199,11 +203,12 @@ class ProjectileAnim {
 }
 
 class DurationAnim {
-    constructor(projectile, duration, coord) {
+    constructor(projectile, duration, coord, fromCharacter) {
         this.projectile = projectile;
         this.maxTick = duration * 30;
         this.x = coord.x;
         this.y = coord.y;
+        this.fromCharacter = fromCharacter;
         this.tick = 0;
         this.zIndex = this.projectile.zIndex || 10;
         this.targerPlayers = false;
@@ -214,7 +219,7 @@ class DurationAnim {
         return this.tick < this.maxTick;
     }
     checkHit(character, worldLevel) {
-        return this.projectile.checkHit(this, character, worldLevel);
+        return this.projectile.checkHit(this, character, worldLevel, this.fromCharacter);
     }
     paint(camera) {
         this.projectile.paint(camera.toCanvasX(this.x), camera.toCanvasY(this.y), this, camera);
@@ -238,7 +243,7 @@ class ThrowProjectileSpell {
         this.sound = sounds.lazer;
     }
     trigger(player, mouseCoord, worldLevel) {
-        const anim = new ProjectileAnim(this.projectile, player.getCenterCoord(), mouseCoord);
+        const anim = new ProjectileAnim(this.projectile, player.getCenterCoord(), mouseCoord, player);
         if (this.endFunc != null) {
             const self = this;
             anim.endFunc = function (coord) {
@@ -267,7 +272,7 @@ class ShotgunAttack {
                 x: from.x + 256 * Math.cos(angus),
                 y: from.y + 256 * Math.sin(angus),
             };
-            const anim = new ProjectileAnim(this.projectile, from, target);
+            const anim = new ProjectileAnim(this.projectile, from, target, player);
             worldLevel.addProjectile(anim, player);
         }
         sounds.shotgun2b.play();
@@ -298,7 +303,7 @@ class ZoneSpell {
     }
     trigger(player, mouseCoord, worldLevel) {
         const center = ZoneSpell.maxRangeCoord(player.getCenterCoord(), mouseCoord, this.range * 64);
-        const anim = new DurationAnim(this.projectile, this.duration, center);
+        const anim = new DurationAnim(this.projectile, this.duration, center, player);
         worldLevel.addProjectile(anim, player);
         sounds.magicMissile.play();
         return true;
@@ -306,7 +311,7 @@ class ZoneSpell {
 }
 class ProtectSpell {
     constructor() {
-        this.sprite = getRavenSprite(2, 113);;
+        this.sprite = buffSprites.shield;
         this.castingTime = 0.2;
         this.mana = 5;
         this.cooldown = 5;
@@ -314,14 +319,8 @@ class ProtectSpell {
         this.zIndex = -10;
     }
     trigger(player, mouseCoord, worldLevel) {
-        const buff = new Buff(BuffId.shield, this.sprite, this.duration);
-        buff.paintFunc = function (camera) {
-            const coord = player.getCenterCoord();
-            const size = 64;
-            this.sprite.paintScale(camera.toCanvasX(coord.x) - size / 2, camera.toCanvasY(coord.y) - size / 2,
-                size, size);
-        };
-        player.addBuff(buff);
+        const buff = new Buff(BuffId.shield, allBuffTypes.shield, this.duration);
+        player.addBuff(buff, player);
         sounds.houseKick.play();
         return true;
     }
@@ -331,15 +330,69 @@ class BuffId {
     static root = 'root';
     static slow = 'slow';
 }
-class Buff {
-    constructor(id, sprite, duration) {
-        this.id = id;
+class BuffSprites {
+    constructor() {
+        this.root = getRavenSprite(1, 48);
+        this.shield = getRavenSprite(2, 113);
+
+        for (let id of Object.keys(this)) {
+            this[id].id = id;
+        }
+    }
+}
+const buffSprites = new BuffSprites();
+
+class BuffType {
+    constructor(sprite) {
+        this.id = "";
         this.sprite = sprite;
-        this.duration = duration;
-        this.value = null;
         this.paintFunc = null;
     }
 }
+class AllBuffTypes {
+    constructor() {
+        this.root = new BuffType(buffSprites.root);
+        this.shield = new BuffType(buffSprites.shield);
+        this.shield.paintFunc = function (character, camera) {
+            const coord = character.getCenterCoord();
+            const size = 64;
+            buffSprites.shield.paintScale(camera.toCanvasX(coord.x) - size / 2, camera.toCanvasY(coord.y) - size / 2,
+                size, size);
+        };
+        for (let id of Object.keys(this)) {
+            this[id].id = id;
+        }
+    }
+}
+const allBuffTypes = new AllBuffTypes();
+
+class Buff {
+    constructor(id, buffType, duration) {
+        this.id = id;
+        this.buffType = buffType;
+        this.sprite = buffType.sprite;
+        this.duration = duration;
+        this.value = null;
+        this.paintFunc = buffType.paintFunc;
+        this.endTick = -1;
+    }
+    getMsg() {
+        return {
+            id: this.id,
+            type: this.buffType.id,
+            duration: this.duration,
+            endTick: this.endTick,
+            value: this.value,
+        }
+    }
+    static fromMsg(msg){
+        const buff = new Buff(msg.id, allBuffTypes[msg.type], msg.duration);
+        buff.endTick = msg.endTick;
+        buff.value = msg.value;
+        return buff;
+    }
+}
+
 
 class AllSpells {
     constructor() {
@@ -403,12 +456,12 @@ class AllSpells {
         spell.castingTime = 1;
         spell.sprite = projectile.sprite;
         spell.sound = sounds.magicMissile;
-        spell.endFunc = function (coord, player, worldLevel) {
+        spell.endFunc = function (coord, fromCharacter, worldLevel) {
             const healZone = new HealAreaProjectile();
-            const anim = new DurationAnim(healZone, 0.2, coord);
+            const anim = new DurationAnim(healZone, 0.2, coord, fromCharacter);
             anim.targerMobs = false;
             anim.targerPlayers = true;
-            worldLevel.addProjectile(anim, player);
+            worldLevel.addProjectile(anim, fromCharacter);
             sounds.bubble.play();
         }
         return spell;
@@ -433,7 +486,7 @@ class MobBasicAttack {
         this.range = projectile.range;
     }
     trigger(mob, target, worldLevel) {
-        const anim = new ProjectileAnim(this.projectile, mob.getCenterCoord(), target);
+        const anim = new ProjectileAnim(this.projectile, mob.getCenterCoord(), target, mob);
         anim.targerPlayers = true;
         anim.targerMobs = false;
         worldLevel.addProjectile(anim, mob);

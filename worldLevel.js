@@ -16,6 +16,21 @@ class Player {
         this.buffs = [];
         this.castingUntilTick = -999;
         this.lookLeft = false;
+        this.worldLevel = this.worldLevel;
+    }
+    initLevel(worldLevel, x, y) {
+        this.worldLevel = worldLevel;
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.inputX = 0;
+        this.inputY = 0;
+        this.lastHitTick = -999;
+        this.lastHealTick = -999;
+        this.life = this.maxLife;
+        this.buffs = [];
+        this.castingUntilTick = -999;
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -121,7 +136,7 @@ class Player {
         }
         for (let buff of this.buffs) {
             if (buff.paintFunc) {
-                buff.paintFunc(camera);
+                buff.paintFunc(this, camera);
             }
         }
         this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
@@ -223,12 +238,12 @@ class ActionBar {
     }
     update(input) {
         if (this.player.life <= 0) {
-            return [];
+            return;
         }
         if (input.keysPressed.s4 && this.worldLevel.exitCell && this.worldLevel.exitCell.isPlayerInside(this.player)) {
             input.keyPressed.s4 = false;
             this.worldLevel.exitCell.trigger();
-            return [];//TODO
+            return;//TODO
         }
         if (tickNumber % 30 == 0) {
             this.mana = Math.min(this.maxMana, this.mana + this.regenMana);
@@ -238,7 +253,7 @@ class ActionBar {
                 this.castSpell(this.castingSpell)
                 this.castingSpell = null;
             }
-            return [];
+            return;
         }
 
         let castedSpell = null;
@@ -264,19 +279,19 @@ class ActionBar {
             return [];
         }
         const target = this.worldLevel.camera.toWorldCoord(input.mouse);
-        return [{
+        this.worldLevel.updates.push({
             t: 'playerCastSpell',
             spell: castedSpell.id,
             target: target,
             playerId: this.player.id,
             playerX: this.player.x,
             playerY: this.player.y,
-        }]
+        });
     }
     onMessage(m) {
         const player = this.worldLevel.players[m.playerId];
         const spell = allSpells[m.spell];
-        spell.trigger(player, m.target, this.worldLevel);       
+        spell.trigger(player, m.target, this.worldLevel);
     }
     paint() {
         if (this.castingSpell != null) {
@@ -359,13 +374,12 @@ class ActionBar {
 }
 
 class AggroMobBrain {
-    init(mob, worldLevel, mobSeed) {
+    init(mob, worldLevel) {
         this.mob = mob;
         this.worldLevel = worldLevel;
         this.intialCoord = { x: this.mob.x, y: this.mob.y };
         this.targetCoord = null;
         this.targetPlayer = null;
-        this.mob.seed = mobSeed;
         this.fireRange = 6;
         this.speed = 3;
         this.walkAroundPlayerUntil = -9999;
@@ -419,7 +433,6 @@ class AggroMobBrain {
         }
     }
     static getRandomTargetCoord(mob, initialCoord, worldLevel) {
-
         function getNextCoord(quarter) {
             const angus = Math.PI * 2 * (quarter % 8) / 8;
             const dx = Math.sign(Math.floor(Math.cos(angus) * 10));
@@ -468,9 +481,13 @@ class Mob {
         this.buffs = [];
         this.lookLeft = false;
         this.createExitCell = false;
+        this.seed = 0;
     }
-    init(worldLevel, mobSeed) {
-        this.brain.init(this, worldLevel, mobSeed);
+    init(id, worldLevel, mobSeed) {
+        this.id = id;
+        this.worldLevel = worldLevel;
+        this.seed = mobSeed;
+        this.brain.init(this, worldLevel);
     }
     getCenterCoord() {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
@@ -520,25 +537,65 @@ class Mob {
         ctx.fillStyle = "green";
         ctx.fillRect(canvasX, top + 2, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
     }
-    onHit(damage, worldLevel, projectile) {
+    onHit(damage, worldLevel, projectile, fromPlayer) {
+        if (!fromPlayer) {
+            throw new Error("missing fromPlayer");
+        }
+        if (fromPlayer == this.worldLevel.remotePlayer) {
+            return;
+        }
+        this.decreaseLife(damage);
+        const msg = this.getMsg();
+        msg.t = 'mobHit';
+        msg.damage = damage;
+        this.worldLevel.updates.push(msg);
+    }
+    decreaseLife(damage) {
         this.life = Math.max(0, this.life - damage);
         this.lastHitTick = tickNumber;
         this.brain.onHit();
-        if (this.life <= 0 && !worldLevel.exitCell) {
-            worldLevel.exitCell = new ExitCell(this.initialX, this.initialY);
+        if (this.life <= 0 && !this.worldLevel.exitCell) {
+            this.worldLevel.exitCell = new ExitCell(this.initialX, this.initialY);
         }
     }
-    onHeal(heal, worldLevel, projectile) {
+    onHeal(heal, worldLevel, projectile, fromCharacter) {
     }
-    addBuff(buff) {
-        buff.endTick = tickNumber + buff.duration * 30;
+    addBuff(buff, fromCharacter) {
+        if(!buff.endTick || buff.endTick <= 0){
+            buff.endTick = tickNumber + buff.duration * 30;
+        }
         for (let i = 0; i < this.buffs.length; i++) {
             if (this.buffs[i].id == buff.id) {
-                this.buffs[i] = this.id;
+                this.buffs[i] = buff;
                 return;
             }
         }
         this.buffs.push(buff)
+    }
+    getMsg() {
+        return {
+            id: this.id,
+            x: this.x,
+            y: this.y,
+            life: this.life,
+            seed: this.seed,
+            buffs: this.buffs.map(b => b.getMsg()),
+            // ...
+        };
+    }
+    refreshFromMsg(msg) {
+        this.x = msg.x;
+        this.y = msg.y;
+        if (msg.t != 'mobHit') {
+            this.life = msg.life;
+        }
+        this.seed = msg.seed;
+        if (msg.t == 'mobHit') {
+            this.decreaseLife(msg.damage);
+        }
+        for(let buff of msg.buffs){
+            this.addBuff(Buff.fromMsg(buff));
+        }
     }
 }
 class CellColorSprite {
@@ -701,6 +758,7 @@ class WorldLevel {
         this.players = players;
         this.mouse = null;
         this.localPlayer = players[isServer ? 0 : 1];
+        this.remotePlayer = players[isServer ? 1 : 0];
         if (!this.localPlayer) {
             throw new Error(`Player not found ${localPlayerId}`);
         }
@@ -711,22 +769,22 @@ class WorldLevel {
         this.mobs = this.level.mobs;
         this.projectiles = [];
         this.annimAdded = false;
-        this.mobs[this.mobs.length - 1].createExitCell = true;
         for (let i = 0; i < this.mobs.length; i++) {
-            this.mobs[i].init(this, i);
+            this.mobs[i].init(i, this, i);
         }
+        this.mobs[this.mobs.length - 1].createExitCell = true;
+        this.updates = [];
     }
     startLevel(level) {
         this.level = level;
         this.map = this.level.map;
         this.mobs = this.level.mobs;
         for (let i = 0; i < this.players.length; i++) {
-            this.players[i].x = 32 * (5 * i);
-            this.players[i].y = 32 * 5;
+            this.players[i].initLevel(this, 32 * (5 * i), 32 * 5);
         }
         this.projectiles = [];
         for (let i = 0; i < this.mobs.length; i++) {
-            this.mobs[i].init(this, i);
+            this.mobs[i].init(i, this, i);
         }
         this.exitCell = null;
     }
@@ -735,6 +793,7 @@ class WorldLevel {
         this.annimAdded = true;
     }
     update() {
+        this.updates = [];
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
@@ -753,9 +812,8 @@ class WorldLevel {
             m.update(this);
         }
         this.checkBulletsHitOnAll(this.projectiles)
-        const playerActions = this.actionBar.update(input, this);
-        updates.push(...playerActions);
-        return updates;
+        this.actionBar.update(input, this);
+        return this.updates;
     }
     moveProjectiles(projectiles) {
         for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -839,6 +897,8 @@ class WorldLevel {
                 this.players[m.id].onMessage(m);
             } else if (m.t === 'playerCastSpell') {
                 this.actionBar.onMessage(m);
+            } else if (m.t === 'mobHit') {
+                this.mobs[m.id].refreshFromMsg(m);
             } else {
                 console.log("WorldLevel.onUpdates() unknown: " + m.t)
             }
@@ -853,13 +913,7 @@ class WorldLevel {
                 life: p.life,
                 maxLife: p.maxLife,
             })),
-            mobs: this.mobs.map(m => ({
-                id: m.id,
-                x: m.x,
-                y: m.y,
-                life: m.life,
-                // ...
-            })),
+            mobs: this.mobs.map(m => m.getMsg()),
             //...
         }
     }
@@ -869,12 +923,11 @@ class WorldLevel {
             const saved = msg.players[i];
             current.x = saved.x;
             current.y = saved.y;
+            current.life = saved.life;
+            current.maxLife = saved.maxLife;
         }
         for (let i = 0; i < this.mobs.length; i++) {
-            const current = this.mobs[i]
-            const saved = msg.mobs[i];
-            current.x = saved.x;
-            current.y = saved.y;
+            this.mobs[i].refreshFromMsg(msg.mobs[i]);
         }
     }
 
