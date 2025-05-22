@@ -16,7 +16,7 @@ class Player {
         this.buffs = [];
         this.castingUntilTick = -999;
         this.lookLeft = false;
-        this.worldLevel = this.worldLevel;
+        this.worldLevel = null;
     }
     initLevel(worldLevel, x, y) {
         this.worldLevel = worldLevel;
@@ -150,20 +150,40 @@ class Player {
         ctx.fillRect(canvasX, top + 2, this.life * this.sprite.tWidth * 2 / this.maxLife, 4);
     }
     getMsg() {
-        return { t: 'playerMove', id: this.id, x: this.x, y: this.y, vx: this.vx, vy: this.vy, ix: this.inputX, iy: this.inputY, ij: this.isJumping };
+        return {
+            t: 'playerMove',
+            id: this.id,
+            x: this.x,
+            y: this.y,
+            vx: this.vx,
+            vy: this.vy,
+            ix: this.inputX,
+            iy: this.inputY,
+            ij: this.isJumping,
+            life: this.life,
+            maxLife: this.maxLife,
+            buffs: this.buffs.map(b => b.getMsg())
+        };
     }
     onMessage(msg) {
-        if (msg.id == this.id && msg.t === 'playerMove') {
-            this.x = msg.x;
-            this.y = msg.y;
-            this.vx = msg.vx;
-            this.vy = msg.vy;
-            this.inputX = msg.ix;
-            this.inputY = msg.iy;
-            this.isJumping = msg.ij;
+        if (msg.id != this.id) {
+            throw new Error("bad idea")
         }
+        this.x = msg.x;
+        this.y = msg.y;
+        this.vx = msg.vx;
+        this.vy = msg.vy;
+        this.inputX = msg.ix;
+        this.inputY = msg.iy;
+        this.isJumping = msg.ij;
+        this.life = msg.life;
+        this.maxLife = msg.maxLife;
     }
     onHit(damage, worldLevel, projectile) {
+        this.lastHitTick = tickNumber;
+        if (this.worldLevel.localPlayer != this) {
+            return;
+        }
         for (let i = 0; i < this.buffs.length; i++) {
             if (this.buffs[i].id == BuffId.shield) {
                 this.buffs.splice(i, 1);
@@ -171,9 +191,12 @@ class Player {
                 return;
             }
         }
-        this.lastHitTick = tickNumber;
         this.life = Math.max(0, this.life - damage);
+        this.worldLevel.updates.push(this.getMsg());
     }
+
+
+
     onHeal(heal, worldLevel, projectile) {
         this.lastHealTick = tickNumber;
         this.life = Math.min(this.maxLife, this.life + heal);
@@ -561,7 +584,7 @@ class Mob {
     onHeal(heal, worldLevel, projectile, fromCharacter) {
     }
     addBuff(buff, fromCharacter) {
-        if(!buff.endTick || buff.endTick <= 0){
+        if (!buff.endTick || buff.endTick <= 0) {
             buff.endTick = tickNumber + buff.duration * 30;
         }
         for (let i = 0; i < this.buffs.length; i++) {
@@ -593,7 +616,7 @@ class Mob {
         if (msg.t == 'mobHit') {
             this.decreaseLife(msg.damage);
         }
-        for(let buff of msg.buffs){
+        for (let buff of msg.buffs) {
             this.addBuff(Buff.fromMsg(buff));
         }
     }
@@ -769,9 +792,6 @@ class WorldLevel {
         this.mobs = this.level.mobs;
         this.projectiles = [];
         this.annimAdded = false;
-        for (let i = 0; i < this.mobs.length; i++) {
-            this.mobs[i].init(i, this, i);
-        }
         this.mobs[this.mobs.length - 1].createExitCell = true;
         this.updates = [];
     }
@@ -797,15 +817,14 @@ class WorldLevel {
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
-        }
-        const updates = [];
+        }      
         const changed = this.localPlayer.updateLocalPlayer(input, this);
         for (let p of this.players) {
             p.update();
         }
         this.camera.update();
-        if (changed) {
-            updates.push(this.localPlayer.getMsg());
+        if (changed || tickNumber % 30 == 0) {
+            this.updates.push(this.localPlayer.getMsg());
         }
         this.moveProjectiles(this.projectiles);
         for (let m of this.mobs) {
@@ -918,6 +937,7 @@ class WorldLevel {
         }
     }
     refreshWorldFromMsg(msg) {
+        this.startLevel(this.level);
         for (let i = 0; i < this.players.length; i++) {
             const current = this.players[i]
             const saved = msg.players[i];

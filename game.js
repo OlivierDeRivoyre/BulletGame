@@ -76,7 +76,7 @@ class Screen {
             this.screenCanvas.height = window.innerHeight;
         } else {
             let w = window.innerWidth - 40;
-            let h = window.innerHeight - 180;
+            let h = window.innerHeight - 80;
             if (h * 16 > w * 9) {
                 h = Math.floor(w * 9 / 16);
             } else {

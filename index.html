@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=810; initial-scale=1.0">
 <style>
     .board {
-        margin-top: 4em;
+        margin-top: 0.4em;
         margin-left: auto;
         margin-right: auto;
         border: 3px solid green;
@@ -16,9 +16,8 @@
 
 <body>
     <canvas id="myCanvas" class="board"></canvas>
-    <div id="myId"></div>
-    <br />
-    <button onclick="fullScreen()">Full Screen</button>
+    <button onclick="fullScreen()" >Full Screen</button>
+    <span id="myId" style="font-size: 0.8em;"></span>        
 </body>
 <script src="lib/peerjs.min.js"></script>
 <script>console.clear()</script>
