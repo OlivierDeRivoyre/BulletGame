@@ -6,6 +6,7 @@ class Input {
             up: false,
             down: false,
             space: false,
+            escape: false,
         };
         this.mouse = { x: 0, y: 0 };
         this.mouseClicked = false;
@@ -27,8 +28,8 @@ class Input {
             this.keysPressed.down = pressed;
         } else if (event.code == 'Space') {
             this.keysPressed.space = pressed;
-        }
-        if (event.key == 'Escape') {
+        } else if (event.key == 'Escape') {
+            this.keysPressed.escape = pressed;
         }
     }
     mouseButton(mouse, pressed, rightclick) {

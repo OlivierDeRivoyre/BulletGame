@@ -55,6 +55,9 @@ class WorldMap {
         this.monsterLimit = this.array2d();
         this.computePaths();
         this.rewardTooltip = new RewardTooltip();
+        this.houseCells = [{ i: 3, j: 2 }, { i: 7, j: 0 }, { i: 14, j: 3 }, { i: 19, j: 5 },
+        { i: 14, j: 8 }, { i: 9, j: 10 }];
+        this.dialog = null;
     }
     array2d() {
         const a = new Array(this.cellWidth);
@@ -279,8 +282,10 @@ class WorldMap {
                 this.paintCell(this.grass, i, j);
             }
         }
-        this.paintCell(this.house, 3, 2);
-        this.paintCell(this.tree, 4,0)
+        for (let coord of this.houseCells) {
+            this.paintCell(this.house, coord.i, coord.j);
+        }
+        this.paintCell(this.tree, 4, 0)
         this.paintCell(this.moutain, 0, 4);
         this.paintCell(this.halfMoutain, 0, 5);
         this.paintCell(this.moutain, 0, 6);
@@ -311,7 +316,7 @@ class WorldMap {
                 if (fog == 1) {
                     continue;
                 }
-                if(this.blockedCells[i][j] && fog){
+                if (this.blockedCells[i][j] && fog) {
                     continue;
                 }
                 if (debug) {
@@ -324,6 +329,9 @@ class WorldMap {
             }
         }
         this.rewardTooltip.paint();
+        if (this.dialog) {
+            this.dialog.paint();
+        }
     }
     paintWater() {
         this.paintCell(this.riverV, 15, 0);
@@ -364,9 +372,13 @@ class WorldMap {
 
         this.paintCell(this.woodBridge, 15, 1);
         this.paintCell(this.stoneBridge, 13, 9);
-      //  this.paintCell(this.whirlpool, 13, 6);
+        //  this.paintCell(this.whirlpool, 13, 6);
     }
     update() {
+        if (this.dialog) {
+            this.dialog.update();
+            return [];
+        }
         if (tickNumber < this.nextMoveTick) {
             return [];
         }
@@ -415,6 +427,11 @@ class WorldMap {
             const m = this.monsters[i];
             if (m.i == this.player.i && m.j == this.player.j) {
                 return this.tryEnterLevel(i, m);
+            }
+        }
+        for (let coord of this.houseCells) {
+            if (coord.i == this.player.i && coord.j == this.player.j) {
+                this.dialog = new EquipPlayerDialog(this.player, game.equipement, game.worldLevel.actionBar);
             }
         }
         return [];
@@ -523,6 +540,129 @@ class RewardTooltip {
             ctx.textRendering = "geometricPrecision";
             ctx.fillText(reward.name, x + 40, y + 20);
             y += 34;
+        }
+    }
+}
+
+class Equipement {
+    constructor() {
+        this.spells = [];
+        for (let id of Object.keys(allSpells)) {
+            this.spells.push(allSpells[id]);
+        }
+    }
+}
+
+class EquipPlayerDialog {
+    constructor(player, equipement, actionBar) {
+        this.player = player;
+        this.actionBar = actionBar;
+        this.pages = [];
+        for (let pageName of ["Mouse 1", "Mouse 2", "Space"]) {
+            const spells = equipement.spells.filter(s => s.description.location == pageName);
+            const page = {
+                name: pageName,
+                spells,
+                spellsZone: new Array(spells.length),
+                index: this.pages.length,
+            }
+            this.pages.push(page);
+        }
+        this.selectedPage = 0;
+    }
+
+    paint() {
+        const borderX = 10;
+        let topX = borderX
+        let topY = 10;
+        for (let i = 0; i < this.pages.length; i++) {
+            const buttonBorder = 8;
+            const page = this.pages[i];
+            ctx.font = "16px Consolas";
+            const textWidth = Math.ceil(ctx.measureText(page.name).width);
+            ctx.fillStyle = i == this.selectedPage ? '#c96' : '#974';
+            ctx.fillRect(topX, topY, textWidth + buttonBorder * 2, 30)
+            page.headerZone = { x: topX, y: topY, width: textWidth + buttonBorder * 2, height: 30 };
+            ctx.fillStyle = 'Black';
+            ctx.fillText(page.name, topX + buttonBorder, topY + 20);
+            topX += textWidth + buttonBorder * 2;
+        }
+
+        const grad = ctx.createLinearGradient(0, 0, CanvasWidth - 20, 0);
+        grad.addColorStop(0, '#c96');
+        grad.addColorStop(1, '#974');
+        ctx.fillStyle = grad;
+        ctx.fillRect(borderX, 40, CanvasWidth - 2 * borderX, CanvasHeight - 50);
+
+        this.paintSpells(this.pages[this.selectedPage]);
+
+        this.paintCursor();
+    }
+
+    paintSpells(page) {
+        let topY = 50;
+        let topX = 20;
+        const actionBarSpell = this.actionBar.spells[page.index];
+        for (let i = 0; i < page.spells.length; i++) {
+            const spell = page.spells[i];
+
+            if (actionBarSpell && spell.id == actionBarSpell.id) {
+                const grad = ctx.createLinearGradient(topX, topY, 300, 36);
+                grad.addColorStop(0, '#dd7');
+                grad.addColorStop(1, '#cc6');
+                ctx.fillStyle = grad;
+                ctx.fillRect(topX - 2, topY - 4, 300, 38);
+            }
+            page.spellsZone[i] = { x: topX - 2, y: topY - 4, width: 300, height: 38 };
+            spell.sprite.paint(topX, topY, 32, 32);
+            ctx.font = "16px Consolas";
+            ctx.fillStyle = spell.description.color;
+            ctx.textRendering = "geometricPrecision";
+            ctx.fillText(spell.description.name, topX + 40, topY + 20);
+            topY += 40;
+        }
+    }
+
+    paintCursor() {
+        ctx.beginPath();
+        ctx.arc(input.mouse.x, input.mouse.y, 5, 2 * Math.PI, 0);
+        ctx.fillStyle = 'yellow';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(input.mouse.x, input.mouse.y, 4, 2 * Math.PI, 0);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+    }
+
+    update() {
+        if (input.keysPressed.space) {
+            input.keysPressed.space = false;
+            game.worldMap.dialog = null;
+            return;
+        }
+        if (input.mouseClicked) {
+            for (let i = 0; i < this.pages.length; i++) {
+                let headerZone = this.pages[i].headerZone;
+                if (!headerZone) {
+                    return;
+                }
+                if (isInsideRect(input.mouse, headerZone)) {
+                    this.selectedPage = i;
+                    return;
+                }
+            }
+            const page = this.pages[this.selectedPage];
+            for (let i = 0; i < page.spells.length; i++) {
+                let zone = page.spellsZone[i];
+                if (!zone) {
+                    return;
+                }
+                if (isInsideRect(input.mouse, zone)) {
+                    const selectedSpell = page.spells[i];
+                    this.actionBar.spells[page.index] = selectedSpell;
+                    return;
+                }
+            }
         }
     }
 }

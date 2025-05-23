@@ -27,6 +27,12 @@ function computeDistance(coord1, coord2) {
     return Math.sqrt(distanceSquare(coord1, coord2));
 }
 
+function isInsideRect(coord, rect) {
+    const insideX = coord.x >= rect.x && coord.x < rect.x + rect.width;
+    const insideY = coord.y >= rect.y && coord.y < rect.y + rect.height;
+    return insideX && insideY;
+}
+
 class Screen {
     constructor() {
         this.screenCanvas = document.getElementById("myCanvas");
@@ -104,6 +110,7 @@ class Game {
         this.players = [serverPlayer, clientPlayer];
         this.worldLevel = new WorldLevel(isServer, this.players, serverPlayer.id);;
         this.worldMap = new WorldMap(isServer, this.players);
+        this.equipement = new Equipement();
         this.screen = new Screen();
         this.currentView = null;
 
@@ -111,8 +118,8 @@ class Game {
     update() {
         if (this.currentView == null) {
             return [];
-        }        
-        const updates = this.currentView.update();        
+        }
+        const updates = this.currentView.update();
         return updates;
     }
     onUpdates(msg) {
@@ -145,7 +152,7 @@ class Game {
 let game = null;
 
 function fullScreen() {
-    if(game == null){
+    if (game == null) {
         return;
     }
     game.screen.fullScreen();

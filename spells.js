@@ -393,7 +393,14 @@ class Buff {
     }
 }
 
-
+class SpellDescription{
+    constructor(location, name, color, desc){
+        this.location = location;
+        this.name = name;
+        this.color = color;
+        this.desc = desc;
+    }
+}
 class AllSpells {
     constructor() {
         this.noSpell = AllSpells.noSpell();
@@ -409,12 +416,15 @@ class AllSpells {
         }
     }
     static noSpell() {
-        return new NoSpell();
+        const spell = new NoSpell();
+        spell.description = new SpellDescription('', 'None', "white", []);
+        return spell;
     }
     static basicAttack() {
         const spell = new ThrowProjectileSpell(new BulletProjectile());
         spell.cooldown = 0.3;
         spell.castingTime = 0;
+        spell.description = new SpellDescription("Mouse 1", "Basic attack", "white", ["A manaless fast attack"]);
         return spell;
     }
     static shotgun() {
@@ -426,6 +436,7 @@ class AllSpells {
         spell.castingTime = 0.2;
         spell.cooldown = 2;
         spell.mana = 20;
+        spell.description = new SpellDescription("Mouse 2", "Shotgun", "orange", ["Fire multiple shots"]);
         return spell;
     }
     static curseGround() {
@@ -436,6 +447,7 @@ class AllSpells {
         spell.radius = 5;
         spell.duration = 5;
         spell.mana = 25;
+        spell.description = new SpellDescription("Mouse 2", "Curse Ground", "purple", ["Curse a large ground area"]);        
         return spell;
     }
     static rootingProjectile() {
@@ -445,7 +457,8 @@ class AllSpells {
         spell.sprite = projectile.sprite;
         spell.cooldown = 8;
         spell.mana = 25;
-        spell.sound = sounds.magicMissile;
+        spell.sound = sounds.magicMissile;       
+        spell.description = new SpellDescription("Mouse 2", "Rooting Projectile", "purple", ["Fire a projectile that root"]);
         return spell;
     }
     static healProjectile() {
@@ -463,7 +476,8 @@ class AllSpells {
             anim.targerPlayers = true;
             worldLevel.addProjectile(anim, fromCharacter);
             sounds.bubble.play();
-        }
+        }        
+        spell.description = new SpellDescription("Space", "Heal Projectile", "green", ["Fire a projectile that heal on impact"]);        
         return spell;
     }
     static protectSpell() {
@@ -471,7 +485,8 @@ class AllSpells {
         spell.castingTime = 0;
         spell.mana = 5;
         spell.cooldown = 4;
-        spell.duration = 1.5;
+        spell.duration = 1.5;      
+        spell.description = new SpellDescription("Space", "Protection", "blue", ["Block an attack"]);              
         return spell;
     }
 }
