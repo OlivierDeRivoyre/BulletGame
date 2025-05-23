@@ -144,9 +144,10 @@ class Game {
 }
 let game = null;
 
-
-
 function fullScreen() {
-    screen.fullScreen();
+    if(game == null){
+        return;
+    }
+    game.screen.fullScreen();
 }
 

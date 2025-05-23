@@ -36,6 +36,7 @@ class WorldMap {
         this.woodBridge = new SimpleSprite(pipoBuildingTileSet, 0, 96, 48, 70);
         this.stoneBridge = new SimpleSprite(pipoBuildingTileSet, 96, 96, 48, 70);
         this.whirlpool = getPipoTile(4, 2);
+        this.tree = getPipoTile(2, 1);
 
         this.vilains = [];
         for (let i = 0; i < 16; i++) {
@@ -69,11 +70,14 @@ class WorldMap {
         return true;
     }
     setBlockedCells() {
+        this.blockedCells[4][0] = "Tree";
         for (let i = 0; i <= 7; i++) {
             for (let j = 4; j <= 7; j++) {
                 this.blockedCells[i][j] = "Mountains";
             }
         }
+        this.blockedCells[5][3] = "Mountains";
+        this.blockedCells[6][3] = "Mountains";
         this.blockedCells[8][5] = "Mountains";
         this.blockedCells[8][6] = "Mountains";
         for (let i = 11; i <= 16; i++) {
@@ -89,18 +93,18 @@ class WorldMap {
     }
     createMonsters() {
         const self = this;
-        function pushMonster(mobIndex, i, j) {
-            self.monsters.push({ mobIndex, i, j, id: self.monsters.length })
+        function pushMonster(mobIndex, i, j, name, rewards) {
+            self.monsters.push({ mobIndex, i, j, id: self.monsters.length, name, rewards, alive: !debug })
         }
-        pushMonster(0, 0, 0);
-        pushMonster(0, 2, 0);
-        pushMonster(0, 1, 2);
-        pushMonster(1, 2, 3);
-        pushMonster(1, 2, 3);
-        pushMonster(1, 5, 1);
-        pushMonster(2, 5, 3);
-        pushMonster(0, 6, 0);
-        pushMonster(3, 6, 2);
+        // start with a dagger
+        pushMonster(1, 0, 0);// gain heal
+        pushMonster(15, 2, 0);// gain shotgun
+        pushMonster(0, 1, 2);// gain shield
+        pushMonster(5, 2, 3);// gain wand        
+        pushMonster(2, 6, 1, '');// Need heal
+
+        // pushMonster(0, 6, 0);
+        //pushMonster(3, 6, 2);
         pushMonster(4, 8, 1);
         pushMonster(5, 8, 4);
         pushMonster(4, 8, 4);
@@ -108,6 +112,7 @@ class WorldMap {
         pushMonster(15, 9, 2);
         pushMonster(6, 10, 4);
         pushMonster(5, 11, 1);
+        pushMonster(2, 13, 0);
         pushMonster(12, 13, 3);
         pushMonster(7, 15, 1);
         pushMonster(5, 16, 3);
@@ -275,12 +280,14 @@ class WorldMap {
             }
         }
         this.paintCell(this.house, 3, 2);
+        this.paintCell(this.tree, 4,0)
         this.paintCell(this.moutain, 0, 4);
         this.paintCell(this.halfMoutain, 0, 5);
         this.paintCell(this.moutain, 0, 6);
         this.paintCell(this.moutain, 2, 4);
         this.paintCell(this.halfMoutain, 2, 5);
         this.paintCell(this.moutain, 2, 6);
+        this.paintCell(this.moutain, 5, 3);
         this.paintCell(this.moutain, 4, 4);
         this.paintCell(this.halfMoutain, 4, 5);
         this.paintCell(this.moutain, 4, 6);
@@ -302,6 +309,9 @@ class WorldMap {
             for (let i = 0; i < this.cellWidth; i++) {
                 var fog = this.fog[i][j];
                 if (fog == 1) {
+                    continue;
+                }
+                if(this.blockedCells[i][j] && fog){
                     continue;
                 }
                 if (debug) {
@@ -354,7 +364,7 @@ class WorldMap {
 
         this.paintCell(this.woodBridge, 15, 1);
         this.paintCell(this.stoneBridge, 13, 9);
-        this.paintCell(this.whirlpool, 13, 6);
+      //  this.paintCell(this.whirlpool, 13, 6);
     }
     update() {
         if (tickNumber < this.nextMoveTick) {
@@ -437,7 +447,7 @@ class WorldMap {
                 if (monsterIndex != -1) {
                     return this.enterLevel(monsterIndex, this.monsters[monsterIndex]);
                 }
-            } else if (m.t === 'mapEnterLevel') {                
+            } else if (m.t === 'mapEnterLevel') {
                 game.refreshWorldFromMsg(m.world)
             }
         }

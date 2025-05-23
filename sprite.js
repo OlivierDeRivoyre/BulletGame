@@ -21,6 +21,7 @@ function getOutdoorDecorSprite(i, j) {
 }
 const pipoBuildingTileSet = loadImg("pipo-map001");
 const pipoGroundTileSet = loadImg("pipo-map001_at");
+const oakTreeImg = loadImg("Oak_Tree");
 
 class SimpleSprite {
     constructor(tile, tx, ty, tWidth, tHeight) {
