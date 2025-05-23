@@ -383,8 +383,8 @@ class WorldMap {
         else if (input.keysPressed.down) {
             newPos.j++;
         }
-        else if (input.keysPressed.s4) {
-            input.keysPressed.s4 = false;
+        else if (input.keysPressed.space) {
+            input.keysPressed.space = false;
             return this.tryEnter();
         }
         if (this.player.i == newPos.i && this.player.j == newPos.j) {

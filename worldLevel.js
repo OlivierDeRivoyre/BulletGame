@@ -214,22 +214,20 @@ class Player {
 }
 
 class ActionBar {
-    static MaxSpells = 5;
+    static MaxSpells = 3;
     constructor(player, worldLevel) {
         this.player = player;
         this.worldLevel = worldLevel;
         this.spells = new Array(ActionBar.MaxSpells);
         this.basicAttack = allSpells.basicAttack;
-        this.spells[0] = allSpells.curseGround;
-        this.spells[1] = allSpells.rootingProjectile;
-        this.spells[2] = allSpells.healProjectile;
-        this.spells[3] = allSpells.protectSpell;
-        this.spells[4] = allSpells.shotgun;
-        this.topX = 400;
+        this.spells[0] = allSpells.basicAttack;
+        this.spells[1] = allSpells.shotgun;
+        this.spells[2] = allSpells.protectSpell;
+        this.width = 104;
         this.height = 60;
-        this.width = 172;
-        this.topY = CanvasHeight - this.height;
-        this.shortcuts = ['Q', 'E', 'F', 'SPC', 'M2'];
+        this.topX = 4;//Math.floor((CanvasWidth - this.width) / 2);
+        this.topY = 4;//CanvasHeight - this.height;
+        this.shortcuts = ['M1', 'M2', 'SPC'];
         this.castingSpell = null;
         this.startCastingAtTick = -999;
         this.castingUntilTick = -999;
@@ -263,8 +261,8 @@ class ActionBar {
         if (this.player.life <= 0) {
             return;
         }
-        if (input.keysPressed.s4 && this.worldLevel.exitCell && this.worldLevel.exitCell.isPlayerInside(this.player)) {
-            input.keyPressed.s4 = false;
+        if (input.keysPressed.space && this.worldLevel.exitCell && this.worldLevel.exitCell.isPlayerInside(this.player)) {
+            input.keyPressed.space = false;
             const msg = this.worldLevel.exitCell.trigger(this.worldLevel);
             this.worldLevel.updates.push(msg);
             return;
@@ -281,23 +279,14 @@ class ActionBar {
         }
 
         let castedSpell = null;
-        if (input.mouse2Clicked && this.tryTrigger(this.spells[4])) {
-            castedSpell = this.spells[4];
-        }
-        else if (input.keysPressed.s1 && this.tryTrigger(this.spells[0])) {
-            castedSpell = this.spells[0];
-        }
-        else if (input.keysPressed.s2 && this.tryTrigger(this.spells[1])) {
+        if (input.mouse2Clicked && this.tryTrigger(this.spells[1])) {
             castedSpell = this.spells[1];
         }
-        else if (input.keysPressed.s3 && this.tryTrigger(this.spells[2])) {
+        else if (input.keysPressed.space && this.tryTrigger(this.spells[2])) {
             castedSpell = this.spells[2];
         }
-        else if (input.keysPressed.s4 && this.tryTrigger(this.spells[3])) {
-            castedSpell = this.spells[3];
-        }
-        else if (input.mouseClicked && this.tryTrigger(this.basicAttack)) {
-            castedSpell = this.basicAttack;
+        else if (input.mouseClicked && this.tryTrigger(this.spells[0])) {
+            castedSpell = this.spells[0];
         }
         if (castedSpell == null) {
             return [];
@@ -348,26 +337,27 @@ class ActionBar {
         ctx.fillStyle = '#444';
         ctx.fillRect(buttonX, this.topY + 2, 32, 32);
         spell.sprite.paintScale(buttonX, buttonY, 32, 32);
-
-        if (spell == this.castingSpell) {
-            const total = this.castingUntilTick - this.startCastingAtTick;
-            const current = tickNumber - this.startCastingAtTick;
-            const progress = current / total;
-            this.paintProgressOverSpell(buttonX, buttonY, progress, '#b718');
-        }
-        if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
-            ctx.fillStyle = '#4448';
-            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
-            const cooldownFor = tickNumber - spell.lastAttackTick;
-            const cooldownRatio = 1 - cooldownFor / (spell.cooldown * 30);
-            this.paintProgressOverSpell(buttonX, buttonY, cooldownRatio, '#222c');
-            //TODO: show cooldown in sec in middle of the icon
-        }
-        else if (spell.mana != 0 && this.mana < spell.mana) {
-            const ratio = 1 - this.mana / spell.mana;
-            ctx.fillStyle = '#44f8';
-            ctx.fillRect(buttonX, this.topY + 2, 32, 32);
-            this.paintProgressOverSpell(buttonX, buttonY, ratio, '#22fc');
+        if (i != 0) {
+            if (spell == this.castingSpell) {
+                const total = this.castingUntilTick - this.startCastingAtTick;
+                const current = tickNumber - this.startCastingAtTick;
+                const progress = current / total;
+                this.paintProgressOverSpell(buttonX, buttonY, progress, '#b718');
+            }
+            if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
+                ctx.fillStyle = '#4448';
+                ctx.fillRect(buttonX, this.topY + 2, 32, 32);
+                const cooldownFor = tickNumber - spell.lastAttackTick;
+                const cooldownRatio = 1 - cooldownFor / (spell.cooldown * 30);
+                this.paintProgressOverSpell(buttonX, buttonY, cooldownRatio, '#222c');
+                //TODO: show cooldown in sec in middle of the icon
+            }
+            else if (spell.mana != 0 && this.mana < spell.mana) {
+                const ratio = 1 - this.mana / spell.mana;
+                ctx.fillStyle = '#44f8';
+                ctx.fillRect(buttonX, this.topY + 2, 32, 32);
+                this.paintProgressOverSpell(buttonX, buttonY, ratio, '#22fc');
+            }
         }
         ctx.fillStyle = "white";
         ctx.font = "12px Consolas";
@@ -929,11 +919,11 @@ class WorldLevel {
             } else if (m.t == 'exitLevelRequest') {
                 if (this.isServer && this.exitCell) {
                     return this.exitCell.trigger(this);
-                                        
+
                 }
             } else if (m.t == 'exitLevel') {
                 if (!this.isServer) {
-                    game.currentView = game.worldMap;                    
+                    game.currentView = game.worldMap;
                 }
             }
             else {

@@ -5,10 +5,7 @@ class Input {
             right: false,
             up: false,
             down: false,
-            s1: false,
-            s2: false,
-            s3: false,
-            s4: false,
+            space: false,
         };
         this.mouse = { x: 0, y: 0 };
         this.mouseClicked = false;
@@ -28,17 +25,18 @@ class Input {
             this.keysPressed.up = pressed;
         } else if (event.keyCode == 40 || event.code == 'KeyS') {
             this.keysPressed.down = pressed;
-        } else if (event.code == 'KeyQ') {
-            this.keysPressed.s1 = pressed;
-        } else if (event.code == 'KeyE') {
-            this.keysPressed.s2 = pressed;
-        } else if (event.code == 'KeyF') {
-            this.keysPressed.s3 = pressed;
         } else if (event.code == 'Space') {
-            this.keysPressed.s4 = pressed;
+            this.keysPressed.space = pressed;
         }
         if (event.key == 'Escape') {
-
+        }
+    }
+    mouseButton(mouse, pressed, rightclick) {
+        this.mouse = mouse;
+        if (rightclick) {
+            this.mouse2Clicked = pressed;
+        } else {
+            this.mouseClicked = pressed;
         }
     }
     keydown(event) {
@@ -50,14 +48,7 @@ class Input {
     mouseMove(mouse) {
         this.mouse = mouse;
     }
-    mouseButton(mouse, pressed, rightclick) {
-        this.mouse = mouse;
-        if (rightclick) {
-            this.mouse2Clicked = pressed;
-        } else {
-            this.mouseClicked = pressed;
-        }
-    }
+
     contextmenu(e) {
         e.preventDefault();
         return false;
