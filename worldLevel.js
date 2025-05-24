@@ -423,40 +423,42 @@ class AggroMobBrain {
         this.mob = mob;
         this.worldLevel = worldLevel;
         this.intialCoord = { x: this.mob.x, y: this.mob.y };
-        this.targetCoord = null;
-        this.targetPlayer = null;
         this.fireRange = 6;
         this.speed = 3;
         this.walkAroundPlayerUntil = -9999;
     }
     update() {
-        if (this.targetPlayer != null && this.targetPlayer.life <= 0) {
-            this.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
+        if (this.mob.targetPlayer != null && this.mob.targetPlayer.life <= 0) {
+            this.mob.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
         }
-        if (this.targetCoord != null && distanceSquare(this.mob, this.targetCoord) < square(this.speed)) {
-            this.targetCoord = null;
+        if (this.mob.targetCoord != null && distanceSquare(this.mob, this.mob.targetCoord) < square(this.speed)) {
+            this.mob.targetCoord = null;
+            this.mob.idleUntilTick = tickNumber + 30 + 30 * (this.mob.seed % 2);
         }
         let destCoord;
-        if (this.targetPlayer != null) {
-            const distanceToPlayer = distanceSquare(this.mob, this.targetPlayer);
+        if (this.mob.targetPlayer != null) {
+            const distanceToPlayer = distanceSquare(this.mob, this.mob.targetPlayer);
             if (distanceToPlayer < square((this.fireRange + 3) * 64)) {
-                this.mob.tryShoot(this.targetPlayer.getCenterCoord(), this.worldLevel);
+                this.mob.tryShoot(this.mob.targetPlayer.getCenterCoord(), this.worldLevel);
             }
-            if (this.targetCoord != null && tickNumber < this.walkAroundPlayerUntil) {
-                destCoord = this.targetCoord;
+            if (this.mob.targetCoord != null && tickNumber < this.walkAroundPlayerUntil) {
+                destCoord = this.mob.targetCoord;
             } else if (distanceToPlayer < square(64 * 1.5)) {
-                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.worldLevel);
+                this.mob.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.worldLevel);
                 this.walkAroundPlayerUntil = tickNumber + 30 * 1;
-                destCoord = this.targetCoord;
+                destCoord = this.mob.targetCoord;
             } else {
-                destCoord = this.targetPlayer;
-                this.targetCoord = null;
+                destCoord = this.mob.targetPlayer;
+                this.mob.targetCoord = null;
             }
         } else {
-            if (this.targetCoord == null) {
-                this.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.worldLevel);
+            if (tickNumber < this.mob.idleUntilTick) {
+                return;
             }
-            destCoord = this.targetCoord;
+            if (this.mob.targetCoord == null) {
+                this.mob.targetCoord = AggroMobBrain.getRandomTargetCoord(this.mob, this.intialCoord, this.worldLevel);
+            }
+            destCoord = this.mob.targetCoord;
         }
         const d = computeDistance(this.mob, destCoord);
         if (d < 0.01) {
@@ -473,8 +475,8 @@ class AggroMobBrain {
         this.mob.y += vy;
     }
     onHit() {
-        if (this.targetPlayer == null) {
-            this.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
+        if (this.mob.targetPlayer == null) {
+            this.mob.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
         }
     }
     static getRandomTargetCoord(mob, initialCoord, worldLevel) {
@@ -517,6 +519,9 @@ class Mob {
         this.spell = spell;
         this.x = x;
         this.y = y;
+        this.targetCoord = null;
+        this.targetPlayer = null;
+        this.idleUntilTick = -9999;
         this.initialX = x;
         this.initialY = y;
         this.maxLife = 100;
