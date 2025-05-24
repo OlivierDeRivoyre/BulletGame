@@ -326,6 +326,48 @@ class ProtectSpell {
         return true;
     }
 }
+class HealRaySpell {
+    constructor() {
+        this.sprite = getRavenSprite(8, 66);
+        this.castingTime = 0;
+        this.mana = 5;
+        this.cooldown = 5;
+        this.zIndex = -10;
+    }
+    trigger(player, mouseCoord, worldLevel) {        
+        return new HealRayEffect(player, mouseCoord, worldLevel);
+    }
+}
+class HealRayEffect{
+    constructor(player, mouseCoord, worldLevel){
+        this.player = player;
+        this.mouseCoord = mouseCoord;
+        this.worldLevel = worldLevel;
+        this.sprite = getRavenSprite(8, 66);
+    }
+    update(spellKeyPressed, mouseCoord){
+        this.mouseCoord = mouseCoord;
+        return spellKeyPressed;
+    }
+    paint(camera){
+        const startCoord = this.player.getCenterCoord();
+        const endCoord = this.mouseCoord;
+        const deltaX = endCoord.x - startCoord.x;
+        const deltaY = endCoord.y - startCoord.y;
+        for(let i = 0; i < 100; i++){
+            this.sprite.paint(
+                camera.toCanvasX(startCoord.x +  deltaX * i / 100),
+                camera.toCanvasY( startCoord.y +  deltaY * i / 100));
+        }
+
+    }
+    getMsg() {
+        return { spell: 'healRay', target: this.mouseCoord };
+    }    
+    onMessage(msg){
+        this.mouseCoord = msg.target;
+    }
+}
 class BuffId {
     static shield = 'shield';
     static root = 'root';
@@ -411,6 +453,7 @@ class AllSpells {
         this.rootingProjectile = AllSpells.rootingProjectile();
         this.healProjectile = AllSpells.healProjectile();
         this.protectSpell = AllSpells.protectSpell();
+        this.healRaySpell = AllSpells.healRaySpell();
 
         for (let id of Object.keys(this)) {
             this[id].id = id;
@@ -490,6 +533,11 @@ class AllSpells {
         spell.cooldown = 4;
         spell.duration = 1.5;
         spell.description = new SpellDescription("Space", "Protection", "blue", ["Block an attack"]);
+        return spell;
+    }
+    static healRaySpell(){
+        const spell = new HealRaySpell();
+        spell.description = new SpellDescription("Space", "Heal Ray", "green", ["Project a healing stream"]);
         return spell;
     }
 }

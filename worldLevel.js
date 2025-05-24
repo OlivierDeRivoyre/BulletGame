@@ -17,6 +17,7 @@ class Player {
         this.castingUntilTick = -999;
         this.lookLeft = false;
         this.worldLevel = null;
+        this.runningSpellAnim = null;
     }
     initLevel(worldLevel, x, y) {
         this.worldLevel = worldLevel;
@@ -169,9 +170,12 @@ class Player {
             if (buff.paintFunc) {
                 buff.paintFunc(this, camera);
             }
+        }        
+        this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);        
+        this.paintLifebar(canvasX, canvasY);
+        if(this.runningSpellAnim){
+            this.runningSpellAnim.paint(camera);
         }
-        this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
-        this.paintLifebar(canvasX, canvasY)
     }
     paintLifebar(canvasX, canvasY) {
         let top = canvasY + this.sprite.tHeight * 2;
@@ -193,7 +197,8 @@ class Player {
             ij: this.isJumping,
             life: this.life,
             maxLife: this.maxLife,
-            buffs: this.buffs.map(b => b.getMsg())
+            buffs: this.buffs.map(b => b.getMsg()),
+            runningSpellAnim: this.runningSpellAnim? this.runningSpellAnim.getMsg() : null,
         };
     }
     onMessage(msg) {
@@ -209,6 +214,14 @@ class Player {
         this.isJumping = msg.ij;
         this.life = msg.life;
         this.maxLife = msg.maxLife;
+        if(this.runningSpellAnim){
+            if(msg.runningSpellAnim){
+                this.runningSpellAnim.onMessage(msg.runningSpellAnim)
+            }
+            else {
+                this.runningSpellAnim = null;
+            }
+        }
     }
     onHit(damage, worldLevel, projectile) {
         this.lastHitTick = tickNumber;
@@ -225,8 +238,6 @@ class Player {
         this.life = Math.max(0, this.life - damage);
         this.worldLevel.updates.push(this.getMsg());
     }
-
-
 
     onHeal(heal, worldLevel, projectile) {
         this.lastHealTick = tickNumber;
@@ -259,14 +270,17 @@ class ActionBar {
         this.topX = 4;//Math.floor((CanvasWidth - this.width) / 2);
         this.topY = 4;//CanvasHeight - this.height;
         this.shortcuts = ['M1', 'M2', 'SPC'];
+        this.keys = [() => input.mouseClicked, () => input.mouse2Clicked, () => input.keysPressed.space];
         this.castingSpell = null;
+        this.runningSpellIndex = null;
         this.startCastingAtTick = -999;
         this.castingUntilTick = -999;
         this.maxMana = 100;
         this.mana = this.maxMana;
         this.regenMana = 5;
     }
-    tryTrigger(spell) {
+    tryTriggerSpell(spellIndex) {
+        const spell = this.spells[spellIndex];
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             return false;
         }
@@ -274,17 +288,21 @@ class ActionBar {
             return false;
         }
         if (spell.castingTime <= 0) {
-            this.castSpell(spell);
+            this.castSpell(spell, spellIndex);
             return true;
         }
-        this.castingSpell = spell;
+        this.castingSpell = spellIndex;
         this.player.castingUntilTick = tickNumber + Math.ceil(spell.castingTime * 30);
         this.castingUntilTick = this.player.castingUntilTick;
         this.startCastingAtTick = tickNumber;
         return true;
     }
-    castSpell(spell) {
-        spell.trigger(this.player, this.worldLevel.camera.toWorldCoord(input.mouse), this.worldLevel);
+    castSpell(spell, spellIndex) {
+        let anim = spell.trigger(this.player, this.worldLevel.camera.toWorldCoord(input.mouse), this.worldLevel);
+        if (anim && anim.update) {
+            this.player.runningSpellAnim = anim;
+            this.runningSpellIndex = spellIndex;
+        }
         spell.lastAttackTick = tickNumber;
         this.mana = Math.max(0, this.mana - spell.mana);
     }
@@ -303,21 +321,29 @@ class ActionBar {
         }
         if (this.castingSpell != null) {
             if (this.castingUntilTick <= tickNumber) {
-                this.castSpell(this.castingSpell)
+                this.castSpell(this.spells[this.castingSpell], this.castingSpell)
                 this.castingSpell = null;
             }
             return;
         }
 
         let castedSpell = null;
-        if (input.mouse2Clicked && this.tryTrigger(this.spells[1])) {
-            castedSpell = this.spells[1];
-        }
-        else if (input.keysPressed.space && this.tryTrigger(this.spells[2])) {
-            castedSpell = this.spells[2];
-        }
-        else if (input.mouseClicked && this.tryTrigger(this.spells[0])) {
-            castedSpell = this.spells[0];
+        if (this.player.runningSpellAnim != null) {
+            const keyPressed = this.keys[this.runningSpellIndex]();
+            const mouseCoord = this.worldLevel.camera.toWorldCoord(input.mouse);
+            const stillRunning = this.player.runningSpellAnim.update(keyPressed, mouseCoord);
+            if(!stillRunning){
+                this.player.runningSpellAnim = null;
+            }
+            const msg = this.player.getMsg();
+            this.worldLevel.updates.push(msg);
+        } else {
+            for (let i = this.spells.length - 1; i >= 0; i--) {
+                if (this.keys[i]() && this.tryTriggerSpell(i)) {
+                    castedSpell = this.spells[i];
+                    break;
+                }
+            }
         }
         if (castedSpell == null) {
             return [];
@@ -335,7 +361,10 @@ class ActionBar {
     onMessage(m) {
         const player = this.worldLevel.players[m.playerId];
         const spell = allSpells[m.spell];
-        spell.trigger(player, m.target, this.worldLevel);
+        let anim = spell.trigger(player, m.target, this.worldLevel);
+         if (anim && anim.update) {
+            player.runningSpellAnim = anim;          
+        }
     }
     paint() {
         if (this.castingSpell != null) {
