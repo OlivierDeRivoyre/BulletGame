@@ -1,34 +1,16 @@
 
 class LevelContent {
-    constructor() {
-        this.map = LevelContent.createLevelBackground();
-        this.mobs = [];
-        this.mobs.push(LevelContent.createMob1At({ i: 1, j: 1 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 5, j: 4 }));
-
-        this.mobs.push(LevelContent.createMob1At({ i: 12, j: 2 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 12, j: 4 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 12, j: 6 }));
-
-        this.mobs.push(LevelContent.createMob1At({ i: 22, j: 2 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 22, j: 4 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 22, j: 6 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 24, j: 3 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 24, j: 5 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 24, j: 7 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 26, j: 3 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 26, j: 5 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 26, j: 7 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 28, j: 3 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 28, j: 5 }));
-        this.mobs.push(LevelContent.createMob1At({ i: 28, j: 7 }));
+    constructor(map, mobs) {
+        this.map = map;
+        this.mobs = mobs;
+        this.startingPosition = [{i: 4, j:4}, {i: 3, j:4}]
     }
-    static createLevelBackground(){
+    static createLevelBackground(width, height) {
         const borderCell = new Cell([cellSpriteFactory.water], { canWalk: false });
-        const cells = new Array(10);
+        const cells = new Array(height);
         let seed = 1;
         for (var j = 0; j < cells.length; j++) {
-            cells[j] = new Array(30);
+            cells[j] = new Array(width);
             for (var i = 0; i < cells[j].length; i++) {
                 seed = getNextRand(seed);
                 cells[j][i] = Cell.getGrassCell(i, j, seed);
@@ -40,5 +22,53 @@ class LevelContent {
         const mob = new Mob(getDungeonTileSetVilainSprite(0, 12), new AggroMobBrain(),
             mobSpells.basicAttack, cell.i * 64, cell.j * 64);
         return mob;
+    }
+    static getDefaultLevel() {
+        const map = LevelContent.createLevelBackground(30, 10);
+        const mobs = [];
+        mobs.push(LevelContent.createMob1At({ i: 1, j: 1 }));
+        mobs.push(LevelContent.createMob1At({ i: 5, j: 4 }));
+
+        mobs.push(LevelContent.createMob1At({ i: 12, j: 2 }));
+        mobs.push(LevelContent.createMob1At({ i: 12, j: 4 }));
+        mobs.push(LevelContent.createMob1At({ i: 12, j: 6 }));
+
+        mobs.push(LevelContent.createMob1At({ i: 22, j: 2 }));
+        mobs.push(LevelContent.createMob1At({ i: 22, j: 4 }));
+        mobs.push(LevelContent.createMob1At({ i: 22, j: 6 }));
+        mobs.push(LevelContent.createMob1At({ i: 24, j: 3 }));
+        mobs.push(LevelContent.createMob1At({ i: 24, j: 5 }));
+        mobs.push(LevelContent.createMob1At({ i: 24, j: 7 }));
+        mobs.push(LevelContent.createMob1At({ i: 26, j: 3 }));
+        mobs.push(LevelContent.createMob1At({ i: 26, j: 5 }));
+        mobs.push(LevelContent.createMob1At({ i: 26, j: 7 }));
+        mobs.push(LevelContent.createMob1At({ i: 28, j: 3 }));
+        mobs.push(LevelContent.createMob1At({ i: 28, j: 5 }));
+        mobs.push(LevelContent.createMob1At({ i: 28, j: 7 }));
+
+        return new LevelContent(map, mobs);
+    }
+
+    static createMobSnailAt(cell) {
+        const mob = new Mob(
+            getDungeonTileSetVilainSprite(15, 4),
+            new AggroMobBrain(),
+            mobSpells.basicAttack,
+            cell.i * 64, cell.j * 64);
+        return mob;
+    }
+
+    static getSnail1() {
+        const map = LevelContent.createLevelBackground(14, 8);
+        const mobs = [];
+        mobs.push(LevelContent.createMobSnailAt({ i: 10, j: 3 }));
+        return new LevelContent(map, mobs);
+    }
+
+    static getLevelContent(levelId) {
+        switch (levelId) {
+            case 'snail1': return LevelContent.getSnail1();
+        }
+        return LevelContent.getDefaultLevel();
     }
 }

@@ -710,7 +710,7 @@ class WorldLevel {
         }
         this.camera = new CameraOffset(this.localPlayer);
         this.actionBar = new ActionBar(this.localPlayer, this);
-        this.level = new LevelContent();
+        this.level = LevelContent.getLevelContent("snail1");
         this.map = this.level.map;
         this.mobs = this.level.mobs;
         this.projectiles = [];
@@ -723,7 +723,8 @@ class WorldLevel {
         this.map = this.level.map;
         this.mobs = this.level.mobs;
         for (let i = 0; i < this.players.length; i++) {
-            this.players[i].initLevel(this, 32 * (5 * i), 32 * 5);
+            const starting = this.level.startingPosition[i];
+            this.players[i].initLevel(this, 64 * starting.i, 64 * starting.j);
         }
         this.projectiles = [];
         for (let i = 0; i < this.mobs.length; i++) {

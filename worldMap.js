@@ -102,7 +102,7 @@ class WorldMap {
         // start with a dagger
         pushMonster(1, 0, 0);// gain heal
         pushMonster(0, 2, 0);// gain shotgun
-        pushMonster(15, 1, 2);// gain shield
+        pushMonster(15, 1, 2, "snail1");// gain shield
         pushMonster(5, 2, 3);// gain wand        
         pushMonster(2, 6, 1, '');// Need heal
 
@@ -449,7 +449,7 @@ class WorldMap {
         }
         this.monsters.splice(monsterIndex, 1);
         this.computePaths();
-        game.worldLevel.startLevel(new LevelContent());
+        game.worldLevel.startLevel(LevelContent.getLevelContent(monster.name));
         game.currentView = game.worldLevel;
         return [{ t: 'mapEnterLevel', world: game.getWorldMsg() }]
     }
