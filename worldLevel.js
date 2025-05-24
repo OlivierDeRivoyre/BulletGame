@@ -749,6 +749,19 @@ class WorldLevel {
     }
     update() {
         this.updates = [];
+        if (this.players.find(p => p.life <= 0)) {
+            if (!this.deathTimer) {
+                this.deathTimer = 30 * 3;
+            } else {
+                this.deathTimer--;
+                if (this.deathTimer <= 1) {
+                    this.updates.push({ t: 'exitLevel' })
+                    game.currentView = game.worldMap;
+                }
+            }
+            return this.updates;
+        }
+
         if (this.annimAdded) {
             this.projectiles.sort((a, b) => a.zIndex - b.zIndex);
             this.annimAdded = false;
@@ -830,6 +843,13 @@ class WorldLevel {
 
         for (let p of this.players) {
             p.paint(this.camera);
+        }
+        if (this.deathTimer) {
+            ctx.font = "48px Consolas";
+            ctx.fillStyle = 'red';
+            ctx.textRendering = "geometricPrecision";
+            ctx.fillText("YOU LOST!", CanvasWidth / 2 - 100, CanvasHeight / 2);
+            return;
         }
         this.actionBar.paint();
         this.paintCursor();
