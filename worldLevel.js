@@ -161,11 +161,11 @@ class Player {
             return;
         }
         if (this.lastHitTick + 5 >= tickNumber) {
-            ctx.fillStyle = 'red';
+            ctx.fillStyle = '#f008';
             ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
         if (this.lastHealTick + 5 >= tickNumber) {
-            ctx.fillStyle = 'green';
+            ctx.fillStyle = '#0f08';
             ctx.fillRect(canvasX, canvasY, this.sprite.tWidth * 2, this.sprite.tHeight * 2);
         }
         for (let buff of this.buffs) {
@@ -175,9 +175,6 @@ class Player {
         }
         this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
         this.paintLifebar(canvasX, canvasY);
-        if (this.runningSpellAnim) {
-            this.runningSpellAnim.paint(camera);
-        }
     }
     paintLifebar(canvasX, canvasY) {
         let top = canvasY + this.sprite.tHeight * 2;
@@ -221,6 +218,7 @@ class Player {
                 this.runningSpellAnim.onMessage(msg.runningSpellAnim)
             }
             else {
+                this.runningSpellAnim.dispose();
                 this.runningSpellAnim = null;
             }
         }
@@ -246,7 +244,7 @@ class Player {
         if (this.worldLevel.localPlayer != this) {
             return;
         }
-        this.life = Math.min(this.maxLife, this.life + heal);        
+        this.life = Math.min(this.maxLife, this.life + heal);
         this.worldLevel.updates.push(this.getMsg());
     }
     addBuff(buff) {
@@ -306,6 +304,9 @@ class ActionBar {
     castSpell(spell, spellIndex) {
         let anim = spell.trigger(this.player, this.worldLevel.camera.toWorldCoord(input.mouse), this.worldLevel);
         if (anim && anim.update) {
+            if (this.player.runningSpellAnim) {
+                this.player.runningSpellAnim.dispose();
+            }
             this.player.runningSpellAnim = anim;
             this.runningSpellIndex = spellIndex;
         }
@@ -339,6 +340,7 @@ class ActionBar {
             const mouseCoord = this.worldLevel.camera.toWorldCoord(input.mouse);
             const stillRunning = this.player.runningSpellAnim.updateInput(this, keyPressed, mouseCoord);
             if (!stillRunning) {
+                this.player.runningSpellAnim.dispose();
                 this.player.runningSpellAnim = null;
             }
             const msg = this.player.getMsg();
@@ -369,6 +371,9 @@ class ActionBar {
         const spell = allSpells[m.spell];
         let anim = spell.trigger(player, m.target, this.worldLevel);
         if (anim && anim.update) {
+            if (player.runningSpellAnim) {
+                player.runningSpellAnim.dispose();
+            }
             player.runningSpellAnim = anim;
         }
     }
@@ -868,14 +873,15 @@ class WorldLevel {
         for (let p of this.projectiles) {
             p.paint(this.camera);
         }
+        for (let p of this.players.filter(p => p.runningSpellAnim)) {
+            p.runningSpellAnim.paint(this.camera);
+        }
         if (this.exitCell) {
             this.exitCell.paint(this.camera);
         }
         for (let mob of this.level.mobs) {
             mob.paint(this.camera);
         }
-
-
         for (let p of this.players) {
             p.paint(this.camera);
         }

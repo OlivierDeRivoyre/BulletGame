@@ -2,21 +2,19 @@ const CanvasCellWidth = 16;
 const CanvasCellHeight = 9;
 const CanvasWidth = 64 * CanvasCellWidth;//1024
 const CanvasHeight = 64 * CanvasCellHeight;//576
+
 const canvas = document.createElement("canvas");
 canvas.width = CanvasWidth;
 canvas.height = CanvasHeight;
 canvas.style.imageRendering = 'pixelated';
-const ctx = canvas.getContext("2d", { alpha: false });
+const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
+
 let tickNumber = 0;
-
-
 
 function square(x) {
     return x * x;
 }
-
-
 function getNextRand(previous) {
     return ((previous + 11) * 16807) % 2147483647;
 }

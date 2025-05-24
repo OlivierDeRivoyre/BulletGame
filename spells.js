@@ -16,6 +16,11 @@ class MySound {
     play() {
         this.audio.play().catch((err) => { });
     }
+    stop() {        
+        this.audio.pause();
+        this.audio.currentTime = 0;
+    }
+
 }
 class Sounds {
     constructor() {
@@ -25,6 +30,12 @@ class Sounds {
         this.bubble = new MySound("bubble");
         this.houseKick = new MySound("houseKick", 0.3);
         this.lazerLow1 = new MySound("lazerLow1");
+
+    }
+    humHeal() {
+        let sound = new MySound("HealHumm", 0.2);
+        sound.audio.loop = true;
+        return sound;
     }
 }
 const sounds = new Sounds();
@@ -357,6 +368,8 @@ class HealRayEffect {
         this.raySprite = new SimpleSprite(bulletTileSet, 488, 16, 16, 16);
         this.raySpriteEnd = new SimpleSprite(bulletTileSet, 488, 54, 16, 16);
         this.raySpriteHit = new DoubleSprite(bulletTileSet, 112, 96, 16, 16);
+        this.sound = sounds.humHeal();
+        this.sound.play();
     }
     updateInput(actionBar, spellKeyPressed, mouseCoord) {
         const startCoord = this.player.getCenterCoord();
@@ -364,6 +377,9 @@ class HealRayEffect {
         this.targetAngus = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x);
         actionBar.mana = Math.max(0, actionBar.mana - this.manaPerSecond / 30);
         return spellKeyPressed && actionBar.mana > 0;
+    }
+    dispose(){
+        this.sound.stop();
     }
     update() {
         let diff = this.targetAngus - this.angus;
