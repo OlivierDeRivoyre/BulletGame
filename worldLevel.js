@@ -174,7 +174,7 @@ class Player {
             }
         }
         this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
-        this.paintLifebar(canvasX, canvasY);        
+        this.paintLifebar(canvasX, canvasY);
         if (this.runningSpellAnim) {
             this.runningSpellAnim.paint(camera);
         }
@@ -241,9 +241,13 @@ class Player {
         this.worldLevel.updates.push(this.getMsg());
     }
 
-    onHeal(heal, worldLevel, projectile) {
+    onHeal(heal) {
         this.lastHealTick = tickNumber;
-        this.life = Math.min(this.maxLife, this.life + heal);
+        if (this.worldLevel.localPlayer != this) {
+            return;
+        }
+        this.life = Math.min(this.maxLife, this.life + heal);        
+        this.worldLevel.updates.push(this.getMsg());
     }
     addBuff(buff) {
         buff.endTick = tickNumber + buff.duration * 30;

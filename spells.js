@@ -347,15 +347,17 @@ class HealRayEffect {
         const endCoord = mouseCoord;
         this.targetAngus = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x);
         this.angus = this.targetAngus;
+        this.angusSpeed = 0.05;
         this.radius = 3 * 64;
-        this.radiusSpeed = 0.05;
+        this.hitDistance = null;
         this.manaPerSecond = 20;
+        this.healPerSecond = 10;
     }
     updateInput(actionBar, spellKeyPressed, mouseCoord) {
         const startCoord = this.player.getCenterCoord();
         const endCoord = mouseCoord;
         this.targetAngus = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x);
-        actionBar.mana = Math.max(0, actionBar.mana - this.manaPerSecond / 30);            
+        actionBar.mana = Math.max(0, actionBar.mana - this.manaPerSecond / 30);
         return spellKeyPressed && actionBar.mana > 0;
     }
     update() {
@@ -365,21 +367,47 @@ class HealRayEffect {
         } else if (diff < -Math.PI) {
             diff = this.targetAngus - this.angus + 2 * Math.PI;
         }
-        if (Math.abs(diff) <= this.radiusSpeed) {
+        if (Math.abs(diff) <= this.angusSpeed) {
             this.angus = this.targetAngus;
         } else {
-            this.angus += Math.sign(diff) * this.radiusSpeed;
+            this.angus += Math.sign(diff) * this.angusSpeed;
         }
+        if (tickNumber % 10 == 0) {
+            const otherPlayer = this.worldLevel.players[1 - this.player.id];
+            this.hitDistance = this.getHitDistance(otherPlayer);
+            if (this.hitDistance != null) {
+                otherPlayer.onHeal(this.healPerSecond / 3)
+            }
+        }
+    }
+    getHitDistance(character) {
+        const distance = computeDistance(this.player, character);
+        if (distance > this.radius) {
+            return null;
+        }
+        const spellHit = {
+            x: this.player.x + distance * Math.cos(this.angus),
+            y: this.player.y + distance * Math.sin(this.angus)
+        };
+        if (distanceSquare(spellHit, character) > square(64)) {
+            return null;
+        }
+        return distance;
     }
     paint(camera) {
         const startCoord = this.player.getCenterCoord();
         // const endCoord = this.mouseCoord;
-        const deltaX = Math.cos(this.angus) * this.radius;
-        const deltaY = Math.sin(this.angus) * this.radius;
+        const cos = Math.cos(this.angus);
+        const sin = Math.sin(this.angus);
+
         for (let i = 0; i < 10; i++) {
+            const d = this.radius * i / 10;
             this.sprite.paint(
-                camera.toCanvasX(startCoord.x + deltaX * i / 10),
-                camera.toCanvasY(startCoord.y + deltaY * i / 10));
+                camera.toCanvasX(startCoord.x + cos * d),
+                camera.toCanvasY(startCoord.y + sin * d));
+            if (this.hitDistance && d > this.hitDistance) {
+                break;
+            }
         }
 
     }
