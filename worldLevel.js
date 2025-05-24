@@ -423,7 +423,7 @@ class AggroMobBrain {
         this.mob = mob;
         this.worldLevel = worldLevel;
         this.intialCoord = { x: this.mob.x, y: this.mob.y };
-        this.fireRange = 6;        
+        this.fireRange = 6;
         this.walkAroundPlayerUntil = -9999;
     }
     update() {
@@ -629,19 +629,30 @@ class Mob {
             y: this.y,
             life: this.life,
             seed: this.seed,
+            targetPlayer: this.targetPlayer ? this.targetPlayer.id : null,
+            targetCoord: this.targetCoord ? { x: this.targetCoord.x, y: this.targetCoord.y } : null,
+            idleUntilTick: this.idleUntilTick,
             buffs: this.buffs.map(b => b.getMsg()),
             // ...
         };
     }
     refreshFromMsg(msg) {
+        if (msg.t == 'mobHit') {
+            this.decreaseLife(msg.damage);
+            return;
+        }
         this.x = msg.x;
         this.y = msg.y;
         if (msg.t != 'mobHit') {
             this.life = msg.life;
-        }
-        this.seed = msg.seed;
-        if (msg.t == 'mobHit') {
-            this.decreaseLife(msg.damage);
+            this.seed = msg.seed;
+            if (msg.targetPlayer) {
+                this.targetPlayer = this.worldLevel.players[msg.targerPlayer];
+            } else {
+                this.targetPlayer = null;
+            }
+            this.targetCoord = msg.targetCoord;
+            this.idleUntilTick = msg.idleUntilTick;
         }
         for (let buff of msg.buffs) {
             this.addBuff(Buff.fromMsg(buff));
