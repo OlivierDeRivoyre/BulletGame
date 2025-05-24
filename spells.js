@@ -334,38 +334,61 @@ class HealRaySpell {
         this.cooldown = 5;
         this.zIndex = -10;
     }
-    trigger(player, mouseCoord, worldLevel) {        
+    trigger(player, mouseCoord, worldLevel) {
         return new HealRayEffect(player, mouseCoord, worldLevel);
     }
 }
-class HealRayEffect{
-    constructor(player, mouseCoord, worldLevel){
+class HealRayEffect {
+    constructor(player, mouseCoord, worldLevel) {
         this.player = player;
-        this.mouseCoord = mouseCoord;
         this.worldLevel = worldLevel;
         this.sprite = getRavenSprite(8, 66);
+        const startCoord = this.player.getCenterCoord();
+        const endCoord = mouseCoord;
+        this.targetAngus = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x);
+        this.angus = this.targetAngus;
+        this.radius = 3 * 64;
+        this.radiusSpeed = 0.05;
     }
-    update(spellKeyPressed, mouseCoord){
-        this.mouseCoord = mouseCoord;
+    updateInput(spellKeyPressed, mouseCoord) {
+        const startCoord = this.player.getCenterCoord();
+        const endCoord = mouseCoord;
+        this.targetAngus = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x);
+        // this.angus = this.targetAngus
         return spellKeyPressed;
     }
-    paint(camera){
+    update() {
+        let diff = this.targetAngus - this.angus;
+
+        if (diff > Math.PI) {
+            diff = this.targetAngus - this.angus - 2 * Math.PI;
+        } else if (diff < -Math.PI) {
+            diff = this.targetAngus - this.angus + 2 * Math.PI;
+        }
+        if (Math.abs(diff) <= this.radiusSpeed) {
+            this.angus = this.targetAngus;
+        } else {
+            this.angus += Math.sign(diff) * this.radiusSpeed;
+        }
+    }
+    paint(camera) {
         const startCoord = this.player.getCenterCoord();
-        const endCoord = this.mouseCoord;
-        const deltaX = endCoord.x - startCoord.x;
-        const deltaY = endCoord.y - startCoord.y;
-        for(let i = 0; i < 100; i++){
+        // const endCoord = this.mouseCoord;
+        const deltaX = Math.cos(this.angus) * this.radius;
+        const deltaY = Math.sin(this.angus) * this.radius;
+        for (let i = 0; i < 10; i++) {
             this.sprite.paint(
-                camera.toCanvasX(startCoord.x +  deltaX * i / 100),
-                camera.toCanvasY( startCoord.y +  deltaY * i / 100));
+                camera.toCanvasX(startCoord.x + deltaX * i / 10),
+                camera.toCanvasY(startCoord.y + deltaY * i / 10));
         }
 
     }
     getMsg() {
-        return { spell: 'healRay', target: this.mouseCoord };
-    }    
-    onMessage(msg){
-        this.mouseCoord = msg.target;
+        return { spell: 'healRay', angus: this.angus, targetAngus: this.targetAngus };
+    }
+    onMessage(msg) {
+        this.angus = msg.angus;
+        this.targetAngus = msg.targetAngus;
     }
 }
 class BuffId {
@@ -535,7 +558,7 @@ class AllSpells {
         spell.description = new SpellDescription("Space", "Protection", "blue", ["Block an attack"]);
         return spell;
     }
-    static healRaySpell(){
+    static healRaySpell() {
         const spell = new HealRaySpell();
         spell.description = new SpellDescription("Space", "Heal Ray", "green", ["Project a healing stream"]);
         return spell;
@@ -573,7 +596,7 @@ class MobPatternAttack {
     trigger(mob, target, worldLevel) {
         const currentPattern = this.patterns[(this.currentPatternIndex++) % this.patterns.length];
         currentPattern.trigger(this.projectile, mob, target, worldLevel);
-        if(this.sound){
+        if (this.sound) {
             this.sound.play();
         }
         return true;

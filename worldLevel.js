@@ -147,7 +147,9 @@ class Player {
             this.vx = 0;
             this.vy = 0;
         }
-
+        if (this.runningSpellAnim) {
+            this.runningSpellAnim.update();
+        }
     }
 
     paint(camera) {
@@ -170,10 +172,10 @@ class Player {
             if (buff.paintFunc) {
                 buff.paintFunc(this, camera);
             }
-        }        
-        this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);        
-        this.paintLifebar(canvasX, canvasY);
-        if(this.runningSpellAnim){
+        }
+        this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
+        this.paintLifebar(canvasX, canvasY);        
+        if (this.runningSpellAnim) {
             this.runningSpellAnim.paint(camera);
         }
     }
@@ -198,7 +200,7 @@ class Player {
             life: this.life,
             maxLife: this.maxLife,
             buffs: this.buffs.map(b => b.getMsg()),
-            runningSpellAnim: this.runningSpellAnim? this.runningSpellAnim.getMsg() : null,
+            runningSpellAnim: this.runningSpellAnim ? this.runningSpellAnim.getMsg() : null,
         };
     }
     onMessage(msg) {
@@ -214,8 +216,8 @@ class Player {
         this.isJumping = msg.ij;
         this.life = msg.life;
         this.maxLife = msg.maxLife;
-        if(this.runningSpellAnim){
-            if(msg.runningSpellAnim){
+        if (this.runningSpellAnim) {
+            if (msg.runningSpellAnim) {
                 this.runningSpellAnim.onMessage(msg.runningSpellAnim)
             }
             else {
@@ -264,7 +266,7 @@ class ActionBar {
         this.basicAttack = allSpells.basicAttack;
         this.spells[0] = allSpells.basicAttack;
         this.spells[1] = allSpells.shotgun;
-        this.spells[2] = allSpells.protectSpell;
+        this.spells[2] = allSpells.healRaySpell;
         this.width = 104;
         this.height = 60;
         this.topX = 4;//Math.floor((CanvasWidth - this.width) / 2);
@@ -331,8 +333,8 @@ class ActionBar {
         if (this.player.runningSpellAnim != null) {
             const keyPressed = this.keys[this.runningSpellIndex]();
             const mouseCoord = this.worldLevel.camera.toWorldCoord(input.mouse);
-            const stillRunning = this.player.runningSpellAnim.update(keyPressed, mouseCoord);
-            if(!stillRunning){
+            const stillRunning = this.player.runningSpellAnim.updateInput(keyPressed, mouseCoord);
+            if (!stillRunning) {
                 this.player.runningSpellAnim = null;
             }
             const msg = this.player.getMsg();
@@ -362,8 +364,8 @@ class ActionBar {
         const player = this.worldLevel.players[m.playerId];
         const spell = allSpells[m.spell];
         let anim = spell.trigger(player, m.target, this.worldLevel);
-         if (anim && anim.update) {
-            player.runningSpellAnim = anim;          
+        if (anim && anim.update) {
+            player.runningSpellAnim = anim;
         }
     }
     paint() {
@@ -896,6 +898,7 @@ class WorldLevel {
 
     onUpdates(updates) {
         for (let m of updates) {
+            //console.dir(m);
             if (m.t === 'playerMove') {
                 this.players[m.id].onMessage(m);
             } else if (m.t === 'playerCastSpell') {
