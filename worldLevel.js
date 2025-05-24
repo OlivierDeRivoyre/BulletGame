@@ -110,12 +110,43 @@ class Player {
         }
         this.vx = accelerate(this.vx, targetVx);
         this.vy = accelerate(this.vy, targetVy);
-
-        this.x += this.vx;
-        this.y += this.vy;
         if (Math.abs(this.vx) > 0.01) {
             this.lookLeft = this.vx < 0;
         }
+        const newX = this.x + this.vx;
+        const newY = this.y + this.vy;
+
+        const corner00 = { x: newX, y: newY };
+        const corner10 = { x: newX + this.sprite.tWidth * 2, y: newY };
+        const corner01 = { x: newX, y: newY + this.sprite.tHeight * 2 };
+        const corner11 = { x: newX + this.sprite.tWidth * 2, y: newY + this.sprite.tHeight * 2 };
+        let corners = new Array(4);
+        if (this.vy < 0) {
+            corners[0] = corner00;
+            corners[1] = corner10;
+        } else if (this.vy > 0) {
+            corners[2] = corner01;
+            corners[3] = corner11;
+        }
+        if (this.vx > 0) {
+            corners[1] = corner10;
+            corners[3] = corner11;
+        } else if (this.vx < 0) {
+            corners[0] = corner00;
+            corners[2] = corner01;
+        }
+        let canGo = true;
+        for (let c of corners.filter(c => c)) {
+            canGo &= this.worldLevel.map.getCell(c.x, c.y).canWalk;
+        }
+        if (canGo) {
+            this.x = newX;
+            this.y = newY;
+        } else {
+            this.vx = 0;
+            this.vy = 0;
+        }
+
     }
 
     paint(camera) {
