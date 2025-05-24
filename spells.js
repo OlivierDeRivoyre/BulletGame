@@ -349,17 +349,17 @@ class HealRayEffect {
         this.angus = this.targetAngus;
         this.radius = 3 * 64;
         this.radiusSpeed = 0.05;
+        this.manaPerSecond = 20;
     }
-    updateInput(spellKeyPressed, mouseCoord) {
+    updateInput(actionBar, spellKeyPressed, mouseCoord) {
         const startCoord = this.player.getCenterCoord();
         const endCoord = mouseCoord;
         this.targetAngus = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x);
-        // this.angus = this.targetAngus
-        return spellKeyPressed;
+        actionBar.mana = Math.max(0, actionBar.mana - this.manaPerSecond / 30);            
+        return spellKeyPressed && actionBar.mana > 0;
     }
     update() {
         let diff = this.targetAngus - this.angus;
-
         if (diff > Math.PI) {
             diff = this.targetAngus - this.angus - 2 * Math.PI;
         } else if (diff < -Math.PI) {

@@ -318,7 +318,7 @@ class ActionBar {
             this.worldLevel.updates.push(msg);
             return;
         }
-        if (tickNumber % 30 == 0) {
+        if (!this.player.runningSpellAnim && tickNumber % 30 == 0) {
             this.mana = Math.min(this.maxMana, this.mana + this.regenMana);
         }
         if (this.castingSpell != null) {
@@ -333,7 +333,7 @@ class ActionBar {
         if (this.player.runningSpellAnim != null) {
             const keyPressed = this.keys[this.runningSpellIndex]();
             const mouseCoord = this.worldLevel.camera.toWorldCoord(input.mouse);
-            const stillRunning = this.player.runningSpellAnim.updateInput(keyPressed, mouseCoord);
+            const stillRunning = this.player.runningSpellAnim.updateInput(this, keyPressed, mouseCoord);
             if (!stillRunning) {
                 this.player.runningSpellAnim = null;
             }
