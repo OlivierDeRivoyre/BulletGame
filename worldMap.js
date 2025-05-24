@@ -101,8 +101,8 @@ class WorldMap {
         }
         // start with a dagger
         pushMonster(1, 0, 0);// gain heal
-        pushMonster(15, 2, 0);// gain shotgun
-        pushMonster(0, 1, 2);// gain shield
+        pushMonster(0, 2, 0);// gain shotgun
+        pushMonster(15, 1, 2);// gain shield
         pushMonster(5, 2, 3);// gain wand        
         pushMonster(2, 6, 1, '');// Need heal
 

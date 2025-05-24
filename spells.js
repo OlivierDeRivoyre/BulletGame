@@ -421,7 +421,9 @@ class AllSpells {
         return spell;
     }
     static basicAttack() {
-        const spell = new ThrowProjectileSpell(new BulletProjectile());
+        const projectile = new BulletProjectile();
+        projectile.range = 1.5;
+        const spell = new ThrowProjectileSpell(projectile);
         spell.cooldown = 0.3;
         spell.castingTime = 0;
         spell.description = new SpellDescription("Mouse 1", "Basic attack", "white", ["A manaless fast attack"]);
