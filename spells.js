@@ -24,6 +24,7 @@ class Sounds {
         this.magicMissile = new MySound("magicMissile", 0.5);
         this.bubble = new MySound("bubble");
         this.houseKick = new MySound("houseKick", 0.3);
+        this.lazerLow1 = new MySound("lazerLow1");
     }
 }
 const sounds = new Sounds();
@@ -385,7 +386,7 @@ class Buff {
             value: this.value,
         }
     }
-    static fromMsg(msg){
+    static fromMsg(msg) {
         const buff = new Buff(msg.id, allBuffTypes[msg.type], msg.duration);
         buff.endTick = msg.endTick;
         buff.value = msg.value;
@@ -393,8 +394,8 @@ class Buff {
     }
 }
 
-class SpellDescription{
-    constructor(location, name, color, desc){
+class SpellDescription {
+    constructor(location, name, color, desc) {
         this.location = location;
         this.name = name;
         this.color = color;
@@ -449,7 +450,7 @@ class AllSpells {
         spell.radius = 5;
         spell.duration = 5;
         spell.mana = 25;
-        spell.description = new SpellDescription("Mouse 2", "Curse Ground", "purple", ["Curse a large ground area"]);        
+        spell.description = new SpellDescription("Mouse 2", "Curse Ground", "purple", ["Curse a large ground area"]);
         return spell;
     }
     static rootingProjectile() {
@@ -459,7 +460,7 @@ class AllSpells {
         spell.sprite = projectile.sprite;
         spell.cooldown = 8;
         spell.mana = 25;
-        spell.sound = sounds.magicMissile;       
+        spell.sound = sounds.magicMissile;
         spell.description = new SpellDescription("Mouse 2", "Rooting Projectile", "purple", ["Fire a projectile that root"]);
         return spell;
     }
@@ -478,8 +479,8 @@ class AllSpells {
             anim.targerPlayers = true;
             worldLevel.addProjectile(anim, fromCharacter);
             sounds.bubble.play();
-        }        
-        spell.description = new SpellDescription("Space", "Heal Projectile", "green", ["Fire a projectile that heal on impact"]);        
+        }
+        spell.description = new SpellDescription("Space", "Heal Projectile", "green", ["Fire a projectile that heal on impact"]);
         return spell;
     }
     static protectSpell() {
@@ -487,8 +488,8 @@ class AllSpells {
         spell.castingTime = 0;
         spell.mana = 5;
         spell.cooldown = 4;
-        spell.duration = 1.5;      
-        spell.description = new SpellDescription("Space", "Protection", "blue", ["Block an attack"]);              
+        spell.duration = 1.5;
+        spell.description = new SpellDescription("Space", "Protection", "blue", ["Block an attack"]);
         return spell;
     }
 }
@@ -511,10 +512,51 @@ class MobBasicAttack {
     }
 }
 
-class MobSpells {
-    constructor() {
-        this.basicAttack = MobSpells.basicAttack();
+class MobPatternAttack {
+    constructor(projectile, patterns) {
+        this.projectile = projectile;
+        this.castingTime = 0;
+        this.cooldown = 1;
+        this.range = projectile.range;
+        this.patterns = patterns;
+        this.currentPatternIndex = 0;
+        this.sound = null;
     }
+    trigger(mob, target, worldLevel) {
+        const currentPattern = this.patterns[(this.currentPatternIndex++) % this.patterns.length];
+        currentPattern.trigger(this.projectile, mob, target, worldLevel);
+        if(this.sound){
+            this.sound.play();
+        }
+        return true;
+    }
+}
+class CrossPattern {
+    trigger(projectile, mob, target, worldLevel) {
+        const center = mob.getCenterCoord();
+        for (const dest of [{ i: 100, j: 0 }, { i: 0, j: 100 }, { i: -100, j: 0 }, { i: 0, j: -100 }]) {
+            const target = { x: center.x + dest.i, y: center.y + dest.j };
+            const anim = new ProjectileAnim(projectile, center, target, mob);
+            anim.targerPlayers = true;
+            anim.targerMobs = false;
+            worldLevel.addProjectile(anim, mob);
+        }
+    }
+}
+class CrossDiagPattern {
+    trigger(projectile, mob, target, worldLevel) {
+        const center = mob.getCenterCoord();
+        for (const dest of [{ i: 100, j: 100 }, { i: -100, j: 100 }, { i: -100, j: -100 }, { i: 100, j: -100 }]) {
+            const target = { x: center.x + dest.i, y: center.y + dest.j };
+            const anim = new ProjectileAnim(projectile, center, target, mob);
+            anim.targerPlayers = true;
+            anim.targerMobs = false;
+            worldLevel.addProjectile(anim, mob);
+        }
+    }
+}
+
+class MobSpells {
     static basicAttack() {
         const projectile = new BulletProjectile();
         projectile.color = 'red';
@@ -523,5 +565,13 @@ class MobSpells {
         let spell = new MobBasicAttack(projectile);
         return spell;
     }
+    static crossAttack() {
+        const projectile = new BulletProjectile();
+        projectile.color = 'red';
+        projectile.speed = 5;
+        projectile.range = 7;
+        const spell = new MobPatternAttack(projectile, [new CrossPattern(), new CrossDiagPattern()]);
+        spell.sound = sounds.lazerLow1;
+        return spell;
+    }
 }
-const mobSpells = new MobSpells();

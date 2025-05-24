@@ -3,7 +3,7 @@ class LevelContent {
     constructor(map, mobs) {
         this.map = map;
         this.mobs = mobs;
-        this.startingPosition = [{i: 4, j:4}, {i: 3, j:4}]
+        this.startingPosition = [{ i: 4, j: 4 }, { i: 3, j: 4 }]
     }
     static createLevelBackground(width, height) {
         const borderCell = new Cell([cellSpriteFactory.water], { canWalk: false });
@@ -19,8 +19,11 @@ class LevelContent {
         return new LevelBackground(borderCell, cells);
     }
     static createMob1At(cell) {
-        const mob = new Mob(getDungeonTileSetVilainSprite(0, 12), new AggroMobBrain(),
-            mobSpells.basicAttack, cell.i * 64, cell.j * 64);
+        const mob = new Mob(
+            getDungeonTileSetVilainSprite(0, 12),
+            new AggroMobBrain(),
+            MobSpells.basicAttack(),
+            cell.i * 64, cell.j * 64);
         return mob;
     }
     static getDefaultLevel() {
@@ -50,18 +53,22 @@ class LevelContent {
     }
 
     static createMobSnailAt(cell) {
+        const spell = MobSpells.crossAttack();
+        spell.projectile.damage = 15; 
         const mob = new Mob(
             getDungeonTileSetVilainSprite(15, 4),
             new AggroMobBrain(),
-            mobSpells.basicAttack,
+            spell,
             cell.i * 64, cell.j * 64);
+        mob.speed = 1;
+        mob.life = mob.maxLife = 500;
         return mob;
     }
 
     static getSnail1() {
-        const map = LevelContent.createLevelBackground(14, 8);
+        const map = LevelContent.createLevelBackground(18, 8);
         const mobs = [];
-        mobs.push(LevelContent.createMobSnailAt({ i: 10, j: 3 }));
+        mobs.push(LevelContent.createMobSnailAt({ i: 16, j: 3 }));
         return new LevelContent(map, mobs);
     }
 

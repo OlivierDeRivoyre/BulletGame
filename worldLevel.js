@@ -423,15 +423,14 @@ class AggroMobBrain {
         this.mob = mob;
         this.worldLevel = worldLevel;
         this.intialCoord = { x: this.mob.x, y: this.mob.y };
-        this.fireRange = 6;
-        this.speed = 3;
+        this.fireRange = 6;        
         this.walkAroundPlayerUntil = -9999;
     }
     update() {
         if (this.mob.targetPlayer != null && this.mob.targetPlayer.life <= 0) {
             this.mob.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
         }
-        if (this.mob.targetCoord != null && distanceSquare(this.mob, this.mob.targetCoord) < square(this.speed)) {
+        if (this.mob.targetCoord != null && distanceSquare(this.mob, this.mob.targetCoord) < square(this.mob.speed)) {
             this.mob.targetCoord = null;
             this.mob.idleUntilTick = tickNumber + 30 + 30 * (this.mob.seed % 2);
         }
@@ -469,8 +468,8 @@ class AggroMobBrain {
             return;
         }
 
-        const vx = this.speed * (destCoord.x - this.mob.x) / d;
-        const vy = this.speed * (destCoord.y - this.mob.y) / d;
+        const vx = this.mob.speed * (destCoord.x - this.mob.x) / d;
+        const vy = this.mob.speed * (destCoord.y - this.mob.y) / d;
         this.mob.x += vx;
         this.mob.y += vy;
     }
@@ -524,6 +523,7 @@ class Mob {
         this.idleUntilTick = -9999;
         this.initialX = x;
         this.initialY = y;
+        this.speed = 3;
         this.maxLife = 100;
         this.life = this.maxLife;
         this.lastHitTick = -9999;
