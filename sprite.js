@@ -22,6 +22,7 @@ function getOutdoorDecorSprite(i, j) {
 const pipoBuildingTileSet = loadImg("pipo-map001");
 const pipoGroundTileSet = loadImg("pipo-map001_at");
 const oakTreeImg = loadImg("Oak_Tree");
+const bulletTileSet = loadImg("M484BulletCollection1");
 
 class SimpleSprite {
     constructor(tile, tx, ty, tWidth, tHeight) {
@@ -73,6 +74,15 @@ class DoubleSprite {
             this.tWidth, this.tHeight,
             x, y,
             this.tWidth * 2, this.tHeight * 2
+        );
+    }
+    paintScale(x, y, w, h, index) {
+        index |= 0;
+        ctx.drawImage(this.tile,
+            this.tx + index * this.tWidth, this.ty,
+            this.tWidth, this.tHeight,
+            x, y,
+            w, h
         );
     }
     paintReverse(x, y, index) {
