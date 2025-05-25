@@ -86,7 +86,8 @@ class Player {
         if (this.life <= 0) {
             return;
         }
-        const isCasting = this.castingUntilTick > tickNumber;
+        const isCasting = this.castingUntilTick > tickNumber
+            || (this.runningSpellAnim && !this.runningSpellAnim.allowPlayerMove);
         const maxSpeed = 4;
         function getNewSpeed(v, input) {
             if (isCasting) {
@@ -338,6 +339,7 @@ class ActionBar {
         if (this.player.runningSpellAnim != null) {
             const keyPressed = this.keys[this.runningSpellIndex]();
             const mouseCoord = this.worldLevel.camera.toWorldCoord(input.mouse);
+            this.spells[this.runningSpellIndex].lastAttackTick = tickNumber;
             const stillRunning = this.player.runningSpellAnim.updateInput(this, keyPressed, mouseCoord);
             if (!stillRunning) {
                 this.player.runningSpellAnim.dispose();

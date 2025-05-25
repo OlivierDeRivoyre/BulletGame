@@ -363,7 +363,7 @@ class HealRayEffect {
         this.hitDistance = null;
         this.manaPerSecond = 10;
         this.healPerSecond = 10;
-
+        this.allowPlayerMove = false;
         this.raySpriteBegin = new SimpleSprite(bulletTileSet, 488, 6, 16, 16);
         this.raySprite = new SimpleSprite(bulletTileSet, 488, 16, 16, 16);
         this.raySpriteEnd = new SimpleSprite(bulletTileSet, 488, 54, 16, 16);
