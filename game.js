@@ -132,7 +132,7 @@ class Game {
     getWorldMsg() {
         return {
             tickNumber: tickNumber,
-            worldLevel: this.worldLevel.getWorldMsg(),
+            worldLevel: this.worldLevel.getWorldMsg( ),
             worldMap: this.worldMap.getWorldMsg(),
             equipement: this.equipement.getWorldMsg(),
             currentView: this.currentView === this.worldMap ? 'map' : 'level',
