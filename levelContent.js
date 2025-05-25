@@ -33,7 +33,7 @@ class LevelContent {
             cell.i * 64, cell.j * 64);
         return mob;
     }
-    static getMobPack1(levelId) {
+    static getGobelin1(levelId) {
         const map = LevelContent.createLevelBackground(30, 10);
         const mobs = [];
         mobs.push(LevelContent.createMob1At({ i: 1, j: 1 }));
@@ -99,11 +99,11 @@ class LevelContent {
         map.cells[9][0] = Cell.waterCell();
         map.cells[0][9] = Cell.waterCell();
         map.cells[9][9] = Cell.waterCell();
-        for(let i = 3; i<=6; i++){
-            for(let j = 3; j<=6; j++){
+        for (let i = 3; i <= 6; i++) {
+            for (let j = 3; j <= 6; j++) {
                 map.cells[i][j] = Cell.waterCell();
-           }
-        }        
+            }
+        }
         const mobs = [];
         mobs.push(LevelContent.createMobAngelAt({ i: 7, j: 3 }));
         const levelDescription = new LevelDescription('Angel', allSpells.basicBow, ['A fearfull angel']);
@@ -111,13 +111,20 @@ class LevelContent {
         level.startingPosition = [{ i: 1, j: 4 }, { i: 2, j: 4 }]
         return level;
     }
+    static getGobelinSorcerer1() {
+        const level = LevelContent.getGobelin1("Pack Mobs");
+        const levelDescription = new LevelDescription('Gobelin tribe', allSpells.healRaySpell, ['Gobelins with their', 'sorcerer']);
+        level.levelDescription = levelDescription;
+        return level;
+    }
     static internalGetLevelContent(levelId) {
         switch (levelId) {
-            case 'packMob1': return LevelContent.getMobPack1("Pack Mobs");
+            case 'gobelinSorcerer1': return LevelContent.getGobelinSorcerer1();
+            case 'gobelin1': return LevelContent.getGobelin1("Gobelins");
             case 'snail1': return LevelContent.getSnail1();
             case 'angel1': return LevelContent.getAngel1();
         }
-        return LevelContent.getMobPack1(levelId);
+        return LevelContent.getGobelin1(levelId);
     }
     static getLevelContent(levelId) {
         const level = LevelContent.internalGetLevelContent(levelId);

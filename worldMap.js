@@ -106,8 +106,8 @@ class WorldMap {
             self.monsters.push({ mobIndex, i, j, id: self.monsters.length, name, defeated: 0 })
         }
         // start with a dagger
-        pushMonster(1, 0, 0);// gain heal
-        pushMonster(0, 2, 0, 'packMob1');// gain shotgun
+        pushMonster(1, 0, 0, 'gobelinSorcerer1');// gain heal
+        pushMonster(0, 2, 0, 'gobelin1');// gain shotgun
         pushMonster(15, 1, 2, 'snail1');// gain shield
         pushMonster(12, 2, 3, 'angel1');// gain bow
         pushMonster(2, 6, 1, '');// Need heal
