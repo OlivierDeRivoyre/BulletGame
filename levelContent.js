@@ -13,7 +13,7 @@ class LevelContent {
         this.startingPosition = [{ i: 4, j: 4 }, { i: 3, j: 4 }]
     }
     static createLevelBackground(width, height) {
-        const borderCell = new Cell([cellSpriteFactory.water], { canWalk: false });
+        const borderCell = Cell.waterCell();//new Cell([cellSpriteFactory.water], { canWalk: false });
         const cells = new Array(height);
         let seed = 1;
         for (var j = 0; j < cells.length; j++) {
@@ -89,16 +89,27 @@ class LevelContent {
             new FearfullMobBrain(),
             spell,
             cell.i * 64, cell.j * 64);
-        mob.speed = 6;        
+        mob.speed = 6;
         return mob;
     }
 
     static getAngel1() {
-        const map = LevelContent.createLevelBackground(18, 8);
+        const map = LevelContent.createLevelBackground(10, 10);
+        map.cells[0][0] = Cell.waterCell();
+        map.cells[9][0] = Cell.waterCell();
+        map.cells[0][9] = Cell.waterCell();
+        map.cells[9][9] = Cell.waterCell();
+        for(let i = 3; i<=6; i++){
+            for(let j = 3; j<=6; j++){
+                map.cells[i][j] = Cell.waterCell();
+           }
+        }        
         const mobs = [];
-        mobs.push(LevelContent.createMobAngelAt({ i: 16, j: 3 }));
+        mobs.push(LevelContent.createMobAngelAt({ i: 7, j: 3 }));
         const levelDescription = new LevelDescription('Angel', allSpells.basicBow, ['A fearfull angel']);
-        return new LevelContent(map, mobs, levelDescription);
+        const level = new LevelContent(map, mobs, levelDescription);
+        level.startingPosition = [{ i: 1, j: 4 }, { i: 2, j: 4 }]
+        return level;
     }
     static internalGetLevelContent(levelId) {
         switch (levelId) {

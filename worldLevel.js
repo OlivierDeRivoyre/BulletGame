@@ -578,7 +578,7 @@ class FearfullMobBrain {
             return;
         }
         const d1 = distanceSquare(this.mob, this.worldLevel.players[0]);
-        const d2 = distanceSquare(this.mob, this.worldLevel.players[0]);
+        const d2 = distanceSquare(this.mob, this.worldLevel.players[1]);
         const limit = square(64 * this.fireRange);
         if (d1 > limit && d2 > limit) {
             this.mob.idleUntilTick = tickNumber + 30;
@@ -612,7 +612,7 @@ class FearfullMobBrain {
     onHit() {
 
     }
-    static getRunAwayCoord(mob, worldLevel) {
+    static getRunAwayCoord(mob, worldLevel) {        
         function getNextCoord(quarter) {
             const angus = Math.PI * 2 * (quarter % 8) / 8;
             const dx = Math.sign(Math.floor(Math.cos(angus) * 10));
@@ -627,12 +627,13 @@ class FearfullMobBrain {
         let selected = null;
         for (let i = 0; i < 8; i++) {
             const nextCoord = getNextCoord(i);
-            const targetCell = worldLevel.map.getCell(nextCoord.x, nextCoord.y);
-            if (!targetCell.canWalk) {
+            const targetCell1 = worldLevel.map.getCell(nextCoord.x, nextCoord.y);
+            const targetCell2 = worldLevel.map.getCell(nextCoord.x + mob.sprite.tWidth * 2, nextCoord.y + mob.sprite.tHeight * 2);
+            if (!targetCell1.canWalk || !targetCell2.canWalk) {
                 continue;
             }
             const d1 = distanceSquare(nextCoord, worldLevel.players[0]);
-            const d2 = distanceSquare(nextCoord, worldLevel.players[0]);
+            const d2 = distanceSquare(nextCoord, worldLevel.players[1]);
             const score = Math.min(d1, d2);
             if (score > best) {
                 best = score;

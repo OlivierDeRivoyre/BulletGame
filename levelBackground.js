@@ -47,6 +47,9 @@ class Cell {
             s.paint(x, y);
         }
     }
+    static waterCell(){
+        return new Cell([cellSpriteFactory.water], { canWalk: false });
+    }
     static getGrassCell(i, j, seed) {
         const grass = (i + j) % 2 == 0 ? cellSpriteFactory.grass1 : cellSpriteFactory.grass2;
         const layers = [grass];
