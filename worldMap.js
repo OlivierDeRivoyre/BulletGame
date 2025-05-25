@@ -583,6 +583,14 @@ class Equipement {
         }
         this.spells.push(spell);
     }
+    getWorldMsg(){
+        return {
+            spells: this.spells.map(s => s.id),
+        };
+    }
+    refreshWorldFromMsg(msg){
+        this.spells = msg.spells.map(id => allSpells[id]);
+    }
 }
 
 class EquipPlayerDialog {

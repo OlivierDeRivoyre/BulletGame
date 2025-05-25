@@ -134,12 +134,14 @@ class Game {
             tickNumber: tickNumber,
             worldLevel: this.worldLevel.getWorldMsg(),
             worldMap: this.worldMap.getWorldMsg(),
+            equipement: this.equipement.getWorldMsg(),
             currentView: this.currentView === this.worldMap ? 'map' : 'level',
         }
     }
     refreshWorldFromMsg(msg) {
         this.worldMap.refreshWorldFromMsg(msg.worldMap);
         this.worldLevel.refreshWorldFromMsg(msg.worldLevel);
+        this.equipement.refreshWorldFromMsg(msg.equipement);
         if (msg.currentView == 'map') {
             this.currentView = this.worldMap;
         } else {
