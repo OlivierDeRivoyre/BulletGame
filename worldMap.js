@@ -612,6 +612,7 @@ class EquipPlayerDialog {
             }
             this.pages.push(page);
         }
+        this.closeZone = { x: CanvasWidth - 40 - 10, y: 10, width: 40, height: 30 };
         this.selectedPage = 0;
     }
 
@@ -631,6 +632,10 @@ class EquipPlayerDialog {
             ctx.fillText(page.name, topX + buttonBorder, topY + 20);
             topX += textWidth + buttonBorder * 2;
         }
+        ctx.fillStyle = '#974';
+        ctx.fillRect(this.closeZone.x, this.closeZone.y, this.closeZone.width, this.closeZone.height)
+        ctx.fillStyle = 'Black';
+        ctx.fillText("X", this.closeZone.x + 14, this.closeZone.y + 20);
 
         const grad = ctx.createLinearGradient(0, 0, CanvasWidth - 20, 0);
         grad.addColorStop(0, '#c96');
@@ -694,6 +699,10 @@ class EquipPlayerDialog {
                     this.selectedPage = i;
                     return;
                 }
+            }
+            if (isInsideRect(input.mouse, this.closeZone)) {
+                game.worldMap.dialog = null;
+                return;
             }
             const page = this.pages[this.selectedPage];
             for (let i = 0; i < page.spells.length; i++) {
