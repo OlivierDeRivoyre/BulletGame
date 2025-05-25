@@ -33,7 +33,7 @@ class LevelContent {
             cell.i * 64, cell.j * 64);
         return mob;
     }
-    static getDefaultLevel(levelId) {
+    static getMobPack1(levelId) {
         const map = LevelContent.createLevelBackground(30, 10);
         const mobs = [];
         mobs.push(LevelContent.createMob1At({ i: 1, j: 1 }));
@@ -56,7 +56,7 @@ class LevelContent {
         mobs.push(LevelContent.createMob1At({ i: 28, j: 5 }));
         mobs.push(LevelContent.createMob1At({ i: 28, j: 7 }));
 
-        const levelDescription = new LevelDescription(levelId, null, []);
+        const levelDescription = new LevelDescription(levelId, allSpells.shotgun, ['A pack of mobs']);
         return new LevelContent(map, mobs, levelDescription);
     }
 
@@ -113,10 +113,11 @@ class LevelContent {
     }
     static internalGetLevelContent(levelId) {
         switch (levelId) {
+            case 'packMob1': return LevelContent.getMobPack1("Pack Mobs");
             case 'snail1': return LevelContent.getSnail1();
             case 'angel1': return LevelContent.getAngel1();
         }
-        return LevelContent.getDefaultLevel(levelId);
+        return LevelContent.getMobPack1(levelId);
     }
     static getLevelContent(levelId) {
         const level = LevelContent.internalGetLevelContent(levelId);

@@ -1059,7 +1059,7 @@ class WorldLevel {
         }
         for (let i = 0; i < this.mobs.length; i++) {
             this.mobs[i].refreshFromMsg(msg.mobs[i]);
-        }
+        }        
     }
 
 }

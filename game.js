@@ -166,7 +166,7 @@ class Game {
         }
         msg.currentView = 'map';
         this.refreshWorldFromMsg(msg);
-        this.worldMap.movePlayerToStartLocation();
+        this.worldMap.movePlayerToStartLocation();        
     }
 }
 let game = null;

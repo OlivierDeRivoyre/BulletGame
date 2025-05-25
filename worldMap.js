@@ -107,8 +107,8 @@ class WorldMap {
         }
         // start with a dagger
         pushMonster(1, 0, 0);// gain heal
-        pushMonster(0, 2, 0);// gain shotgun
-        pushMonster(15, 1, 2, "snail1");// gain shield
+        pushMonster(0, 2, 0, 'packMob1');// gain shotgun
+        pushMonster(15, 1, 2, 'snail1');// gain shield
         pushMonster(12, 2, 3, 'angel1');// gain bow
         pushMonster(2, 6, 1, '');// Need heal
 
@@ -533,6 +533,7 @@ class WorldMap {
         for (let i = this.monsters.length - 1; i >= 0; i--) {
             this.monsters[i].defeated = msg.monsters[i].defeated;
         }
+        this.computePaths();
     }
 }
 
