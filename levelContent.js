@@ -1,8 +1,15 @@
-
+class LevelDescription {
+    constructor(name, reward, summary) {
+        this.name = name;
+        this.reward = reward;
+        this.summary = summary;
+    }
+}
 class LevelContent {
-    constructor(map, mobs) {
+    constructor(map, mobs, levelDescription) {
         this.map = map;
         this.mobs = mobs;
+        this.levelDescription = levelDescription;
         this.startingPosition = [{ i: 4, j: 4 }, { i: 3, j: 4 }]
     }
     static createLevelBackground(width, height) {
@@ -26,7 +33,7 @@ class LevelContent {
             cell.i * 64, cell.j * 64);
         return mob;
     }
-    static getDefaultLevel() {
+    static getDefaultLevel(levelId) {
         const map = LevelContent.createLevelBackground(30, 10);
         const mobs = [];
         mobs.push(LevelContent.createMob1At({ i: 1, j: 1 }));
@@ -49,12 +56,13 @@ class LevelContent {
         mobs.push(LevelContent.createMob1At({ i: 28, j: 5 }));
         mobs.push(LevelContent.createMob1At({ i: 28, j: 7 }));
 
-        return new LevelContent(map, mobs);
+        const levelDescription = new LevelDescription(levelId, null, []);
+        return new LevelContent(map, mobs, levelDescription);
     }
 
     static createMobSnailAt(cell) {
         const spell = MobSpells.crossAttack();
-        spell.projectile.damage = 15; 
+        spell.projectile.damage = 15;
         const mob = new Mob(
             getDungeonTileSetVilainSprite(15, 4),
             new AggroMobBrain(),
@@ -69,13 +77,14 @@ class LevelContent {
         const map = LevelContent.createLevelBackground(18, 8);
         const mobs = [];
         mobs.push(LevelContent.createMobSnailAt({ i: 16, j: 3 }));
-        return new LevelContent(map, mobs);
+        const levelDescription = new LevelDescription('Snail', allSpells.protectSpell, ['A single strong boss']);
+        return new LevelContent(map, mobs, levelDescription);
     }
 
     static getLevelContent(levelId) {
         switch (levelId) {
             case 'snail1': return LevelContent.getSnail1();
         }
-        return LevelContent.getDefaultLevel();
+        return LevelContent.getDefaultLevel(levelId);
     }
 }

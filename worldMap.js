@@ -96,8 +96,8 @@ class WorldMap {
     }
     createMonsters() {
         const self = this;
-        function pushMonster(mobIndex, i, j, name, rewards) {
-            self.monsters.push({ mobIndex, i, j, id: self.monsters.length, name, rewards, alive: !debug })
+        function pushMonster(mobIndex, i, j, name) {
+            self.monsters.push({ mobIndex, i, j, id: self.monsters.length, name, defeated: 0 })
         }
         // start with a dagger
         pushMonster(1, 0, 0);// gain heal
@@ -200,10 +200,11 @@ class WorldMap {
             map[i][j] = v;
         }
         const directions = [{ i: -1, j: 0 }, { i: 0, j: -1 }, { i: 1, j: 0 }, { i: 0, j: 1 }];
-        for (let m of this.monsters) {
+        const aliveMonsters = this.monsters.filter(m => m.defeated == 0);
+        for (let m of aliveMonsters) {
             set(m.i, m.j, { hasMonster: true });
         }
-        for (let m of this.monsters) {
+        for (let m of aliveMonsters) {
             for (let around of directions) {
                 if (!get(m.i + around.i, m.j + around.j)) {
                     set(m.i + around.i, m.j + around.j, { mustGoToMonster: true })
@@ -264,16 +265,19 @@ class WorldMap {
             ctx.fillText(i + "," + j, px + 16, py + 24);
         }
     }
-    paintMob(mobIndex, i, j) {
-        const sprite = this.vilains[mobIndex];
-        this.paintCharacter(sprite, i, j);
+    paintMob(monster) {
+        const sprite = this.vilains[monster.mobIndex];
+        this.paintCharacter(sprite, monster.i, monster.j, monster.defeated > 0);
     }
-    paintCharacter(sprite, i, j) {
+    paintCharacter(sprite, i, j, defeated) {
         const px = this.borderX + i * this.cellPx + Math.floor((this.cellWidth - sprite.tWidth) / 2);
         const py = this.borderY + j * this.cellPx + Math.floor((this.cellWidth - sprite.tHeight) / 2);
-        const animIndex = Math.floor(tickNumber / 20) % 2;
+        const animIndex = defeated ? 0 : Math.floor(tickNumber / 20) % 2;
         const reverse = i > 2 && !(j > 7 && i < 10);
         sprite.paint(px, py, animIndex, reverse);
+        if (defeated) {
+            deadSprite.paint(px, py + 14);
+        }
     }
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -305,7 +309,7 @@ class WorldMap {
         this.paintWater();
 
         for (let m of this.monsters) {
-            this.paintMob(m.mobIndex, m.i, m.j);
+            this.paintMob(m);
         }
         for (let p of this.players) {
             this.paintCharacter(p.sprite, p.i, p.j);
@@ -414,20 +418,29 @@ class WorldMap {
         this.player.i = newPos.i;
         this.player.j = newPos.j;
         this.unfogAround(this.player.i, this.player.j);
-        if (this.monsters.find(m => m.i == this.player.i && m.j == this.player.j)) {
-            this.rewardTooltip.temp_SetRandomReward();
+        const monster = this.monsters.find(m => m.i == this.player.i && m.j == this.player.j);
+        if (monster) {
+            const level = LevelContent.getLevelContent(monster.name)
+            this.rewardTooltip.levelDescription = level.levelDescription;
         } else {
-            this.rewardTooltip.rewards = [];
+            this.rewardTooltip.levelDescription = null;
         }
         this.nextMoveTick = tickNumber + 10;
         return [{ t: 'mapMove', id: this.player.id, i: this.player.i, j: this.player.j }];
     }
-    tryEnter() {
+    getMonsterUnderPlayer() {
         for (let i = 0; i < this.monsters.length; i++) {
             const m = this.monsters[i];
             if (m.i == this.player.i && m.j == this.player.j) {
-                return this.tryEnterLevel(i, m);
+                return m;
             }
+        }
+        return null;
+    }
+    tryEnter() {
+        const monster = this.getMonsterUnderPlayer();
+        if (monster) {
+            return this.tryEnterLevel(monster);
         }
         for (let coord of this.houseCells) {
             if (coord.i == this.player.i && coord.j == this.player.j) {
@@ -436,22 +449,42 @@ class WorldMap {
         }
         return [];
     }
-    tryEnterLevel(monsterIndex, monster) {
+    tryEnterLevel(monster) {
         if (!this.isServer) {
             return [{ t: 'mapTryEnterLevel', monsterId: monster.id }]
         } else {
-            return this.enterLevel(monsterIndex, monster);
+            return this.enterLevel(monster);
         }
     }
-    enterLevel(monsterIndex, monster) {
+    enterLevel(monster) {
         if (!this.isServer) {
             return [{ t: 'mapTryEnterLevel', monsterId: monster.id }]
         }
-        this.monsters.splice(monsterIndex, 1);
-        this.computePaths();
+        for (let p of this.players) {
+            p.i = monster.i;
+            p.j = monster.j;
+        }
         game.worldLevel.startLevel(LevelContent.getLevelContent(monster.name));
         game.currentView = game.worldLevel;
         return [{ t: 'mapEnterLevel', world: game.getWorldMsg() }]
+    }
+    onLevelWin() {
+        const monster = this.getMonsterUnderPlayer();
+        if (!monster) {
+            console.log("No monster on lvl win??");
+        } else {
+            monster.defeated++;
+        }
+        const levelDesc = game.worldLevel.levelContent.levelDescription;
+        if (!levelDesc) {
+            console.log("No levelDesc on lvl win??");
+        } else {
+            const spell = levelDesc.reward;
+            if (spell) {
+                game.equipement.unlockSpell(spell);
+            }
+        }
+        this.computePaths();
     }
     onUpdates(msg) {
         for (let m of msg) {
@@ -462,7 +495,7 @@ class WorldMap {
             } else if (m.t === 'mapTryEnterLevel') {
                 const monsterIndex = this.monsters.findIndex(p => p.id == m.monsterId);
                 if (monsterIndex != -1) {
-                    return this.enterLevel(monsterIndex, this.monsters[monsterIndex]);
+                    return this.enterLevel(this.monsters[monsterIndex]);
                 }
             } else if (m.t === 'mapEnterLevel') {
                 game.refreshWorldFromMsg(m.world)
@@ -481,7 +514,7 @@ class WorldMap {
                 };
             }),
             monsters: this.monsters.map(m => {
-                return { id: m.id };
+                return { id: m.id, defeated: m.defeated };
             }),
         };
     }
@@ -491,54 +524,47 @@ class WorldMap {
             this.players[i].j = msg.players[i].j;
         }
         for (let i = this.monsters.length - 1; i >= 0; i--) {
-            const id = this.monsters[i].id;
-            if (!msg.monsters.find(m => m.id == id)) {
-                this.monsters.splice(i, 1);
-            }
+            this.monsters[i].defeated = msg.monsters[i].defeated;
         }
     }
 }
 
 class RewardTooltip {
     constructor() {
-        this.rewards = []
+        this.levelDescription = null
     }
-    temp_SetRandomReward() {
-        this.seed = getNextRand(this.seed || 17);
-        const allRewards = [
-            { sprite: allSpells.curseGround.sprite, name: "Curse Ground I", color: "#FBB" },
-            { sprite: allSpells.healProjectile.sprite, name: "Healing Projectile I", color: "#BFB" },
-            { sprite: allSpells.protectSpell.sprite, name: "Protection I", color: "#BBF" },
-            { sprite: allSpells.shotgun.sprite, name: "Multi shot I", color: "#FBB" },
-            { sprite: allSpells.rootingProjectile.sprite, name: "Rooting shot", color: "#FBB" },
-        ]
-        const selected = allRewards[this.seed % allRewards.length];
-        this.rewards = [selected];
-    }
+
     paint() {
-        if (this.rewards.length == 0) {
+        if (!this.levelDescription) {
             return;
         }
-
         const topX = 32 + 10;
         const topY = 16 + 48 * 5;
         const width = 48 * 6;
         const height = 48 * 3;
-        ctx.fillStyle = "#303030";
+        ctx.fillStyle = '#c96';
         ctx.fillRect(topX, topY, width, height);
         let x = topX + 8;
-        let y = topY + 16;
-        ctx.font = "12px Consolas";
-        ctx.fillStyle = 'white';
+        let y = topY + 24;
+        ctx.font = "20px Consolas";
+        ctx.fillStyle = 'Black';
         ctx.textRendering = "geometricPrecision";
-        ctx.fillText("Potential rewards:", x, y);
-        y += 8;
-        for (let reward of this.rewards) {
-            reward.sprite.paintScale(x, y, 32, 32);
-            ctx.font = "12px Consolas";
-            ctx.fillStyle = reward.color;
-            ctx.textRendering = "geometricPrecision";
-            ctx.fillText(reward.name, x + 40, y + 20);
+        ctx.fillText(this.levelDescription.name, x, y);
+        y += 24;
+        for (let summary of this.levelDescription.summary) {
+            ctx.fillStyle = 'white';
+            ctx.fillText(summary, x, y);
+            y += 20;
+        }
+        y += 4;
+        const spell = this.levelDescription.reward;
+        if (spell) {
+            ctx.fillStyle = 'white';
+            ctx.fillText("Reward:", x, y);
+            y += 20;
+            spell.sprite.paintScale(x, y, 32, 32);
+            ctx.fillStyle = spell.description.color;
+            ctx.fillText(spell.description.name, x + 40, y + 20);
             y += 34;
         }
     }
@@ -550,6 +576,12 @@ class Equipement {
         for (let id of Object.keys(allSpells)) {
             this.spells.push(allSpells[id]);
         }
+    }
+    unlockSpell(spell) {
+        if (this.spells.find(s => s.id == spell.id)) {
+            console.log("Spell already known: " + spell.id);
+        }
+        this.spells.push(spell);
     }
 }
 

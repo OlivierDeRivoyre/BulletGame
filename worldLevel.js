@@ -319,7 +319,7 @@ class ActionBar {
             return;
         }
         if (input.keysPressed.space && this.worldLevel.exitCell && this.worldLevel.exitCell.isPlayerInside(this.player)) {
-            input.keyPressed.space = false;
+            input.keysPressed.space = false;
             const msg = this.worldLevel.exitCell.trigger(this.worldLevel);
             this.worldLevel.updates.push(msg);
             return;
@@ -738,10 +738,10 @@ class ExitCell {
     }
     trigger(worldLevel) {
         if (worldLevel.isServer) {
+            game.worldMap.onLevelWin();
             game.currentView = game.worldMap;
-            return { t: 'exitLevel' };
+            return { t: 'exitLevel', win: true };
         } else {
-            game.currentView = game.worldMap;
             return { t: 'exitLevelRequest' };
         }
 
@@ -763,20 +763,20 @@ class WorldLevel {
         }
         this.camera = new CameraOffset(this.localPlayer);
         this.actionBar = new ActionBar(this.localPlayer, this);
-        this.level = LevelContent.getLevelContent("snail1");
-        this.map = this.level.map;
-        this.mobs = this.level.mobs;
+        this.levelContent = LevelContent.getLevelContent("snail1");
+        this.map = this.levelContent.map;
+        this.mobs = this.levelContent.mobs;
         this.projectiles = [];
         this.annimAdded = false;
         this.mobs[this.mobs.length - 1].createExitCell = true;
         this.updates = [];
     }
-    startLevel(level) {
-        this.level = level;
-        this.map = this.level.map;
-        this.mobs = this.level.mobs;
+    startLevel(levelContent) {
+        this.levelContent = levelContent;
+        this.map = this.levelContent.map;
+        this.mobs = this.levelContent.mobs;
         for (let i = 0; i < this.players.length; i++) {
-            const starting = this.level.startingPosition[i];
+            const starting = this.levelContent.startingPosition[i];
             this.players[i].initLevel(this, 64 * starting.i, 64 * starting.j);
         }
         this.projectiles = [];
@@ -784,6 +784,9 @@ class WorldLevel {
             this.mobs[i].init(i, this, i);
         }
         this.exitCell = null;
+        if (debug) {
+            this.exitCell = new ExitCell(0, 0);
+        }
     }
     addProjectile(anim) {
         this.projectiles.push(anim);
@@ -797,7 +800,7 @@ class WorldLevel {
             } else {
                 this.deathTimer--;
                 if (this.deathTimer <= 1) {
-                    this.updates.push({ t: 'exitLevel' })
+                    this.updates.push({ t: 'exitLevel', win: false })
                     game.currentView = game.worldMap;
                 }
             }
@@ -871,7 +874,7 @@ class WorldLevel {
     }
     paint() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.level.map.paint(this.camera);
+        this.map.paint(this.camera);
         for (let p of this.projectiles) {
             p.paint(this.camera);
         }
@@ -881,7 +884,7 @@ class WorldLevel {
         if (this.exitCell) {
             this.exitCell.paint(this.camera);
         }
-        for (let mob of this.level.mobs) {
+        for (let mob of this.mobs) {
             mob.paint(this.camera);
         }
         for (let p of this.players) {
@@ -924,6 +927,9 @@ class WorldLevel {
                 }
             } else if (m.t == 'exitLevel') {
                 if (!this.isServer) {
+                    if (m.win) {
+                        game.worldMap.onLevelWin();
+                    }
                     game.currentView = game.worldMap;
                 }
             }
@@ -947,7 +953,7 @@ class WorldLevel {
         }
     }
     refreshWorldFromMsg(msg) {
-        this.startLevel(this.level);
+        this.startLevel(this.levelContent);
         for (let i = 0; i < this.players.length; i++) {
             const current = this.players[i]
             const saved = msg.players[i];
