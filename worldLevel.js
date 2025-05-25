@@ -297,7 +297,7 @@ class ActionBar {
     }
     tryTriggerSpell(spellIndex) {
         const spell = this.spells[spellIndex];
-        if(!spell){
+        if (!spell) {
             return;
         }
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
@@ -564,6 +564,82 @@ class AggroMobBrain {
             }
         }
         return initialCoord;
+    }
+}
+
+class FearfullMobBrain {
+    init(mob, worldLevel) {
+        this.mob = mob;
+        this.worldLevel = worldLevel;
+        this.fireRange = 6;
+    }
+    update() {
+        if (tickNumber < this.mob.idleUntilTick) {
+            return;
+        }
+        const d1 = distanceSquare(this.mob, this.worldLevel.players[0]);
+        const d2 = distanceSquare(this.mob, this.worldLevel.players[0]);
+        const limit = square(64 * this.fireRange);
+        if (d1 > limit && d2 > limit) {
+            this.mob.idleUntilTick = tickNumber + 30;
+            return;
+        }
+        let destCoord = this.mob.targetCoord;
+        let d;
+        if (destCoord) {
+            d = computeDistance(this.mob, destCoord);
+            if (d <= this.mob.speed) {
+                destCoord = null;
+            }
+        }
+        if (!destCoord) {
+            destCoord = FearfullMobBrain.getRunAwayCoord(this.mob, this.worldLevel);
+            if (!destCoord) {
+                this.mob.idleUntilTick = tickNumber + 30;
+                return;
+            }
+            this.mob.targetCoord = destCoord;
+            d = computeDistance(this.mob, destCoord);
+        }
+        if (this.mob.buffs.find(b => b.id == BuffId.root)) {
+            return;
+        }
+        const vx = this.mob.speed * (destCoord.x - this.mob.x) / d;
+        const vy = this.mob.speed * (destCoord.y - this.mob.y) / d;
+        this.mob.x += vx;
+        this.mob.y += vy;
+    }
+    onHit() {
+
+    }
+    static getRunAwayCoord(mob, worldLevel) {
+        function getNextCoord(quarter) {
+            const angus = Math.PI * 2 * (quarter % 8) / 8;
+            const dx = Math.sign(Math.floor(Math.cos(angus) * 10));
+            const dy = Math.sign(Math.floor(Math.sin(angus) * 10));
+            let nextCoord = {
+                x: mob.x + dx * 64,
+                y: mob.y + dy * 64,
+            };
+            return nextCoord;
+        }
+        let best = -999;
+        let selected = null;
+        for (let i = 0; i < 8; i++) {
+            const nextCoord = getNextCoord(i);
+            const targetCell = worldLevel.map.getCell(nextCoord.x, nextCoord.y);
+            if (!targetCell.canWalk) {
+                continue;
+            }
+            const d1 = distanceSquare(nextCoord, worldLevel.players[0]);
+            const d2 = distanceSquare(nextCoord, worldLevel.players[0]);
+            const score = Math.min(d1, d2);
+            if (score > best) {
+                best = score;
+                selected = nextCoord
+            }
+        }
+        return selected;
     }
 }
 

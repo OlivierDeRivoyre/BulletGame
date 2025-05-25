@@ -86,10 +86,10 @@ class LevelContent {
         spell.projectile.damage = 5;
         const mob = new Mob(
             getDungeonTileSetVilainSprite(12, 4),
-            new AggroMobBrain(),
+            new FearfullMobBrain(),
             spell,
             cell.i * 64, cell.j * 64);
-        mob.speed = 5;        
+        mob.speed = 6;        
         return mob;
     }
 
