@@ -72,6 +72,9 @@ class Server {
     constructor() {
         this.connections = [];
         game = new Game(true);
+        if(!new URLSearchParams(window.location.search).get("new")){        
+            game.load();
+        }
         game.currentView = game.worldMap;
     }
     onConnect(conn) {

@@ -80,8 +80,12 @@ class LevelContent {
         const levelDescription = new LevelDescription('Snail', allSpells.protectSpell, ['A single strong boss']);
         return new LevelContent(map, mobs, levelDescription);
     }
-
     static getLevelContent(levelId) {
+        const level = LevelContent.internalGetLevelContent(levelId);
+        level.id = levelId;
+        return level;
+    }
+    static internalGetLevelContent(levelId) {
         switch (levelId) {
             case 'snail1': return LevelContent.getSnail1();
         }

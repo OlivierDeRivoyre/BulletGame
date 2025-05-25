@@ -59,6 +59,12 @@ class WorldMap {
         { i: 14, j: 8 }, { i: 9, j: 10 }];
         this.dialog = null;
     }
+    movePlayerToStartLocation() {
+        for (let p of this.players) {
+            p.i = 3;
+            p.j = 2;
+        }
+    }
     array2d() {
         const a = new Array(this.cellWidth);
         for (let i = 0; i < this.cellWidth; i++) {
@@ -483,6 +489,7 @@ class WorldMap {
             if (spell) {
                 game.equipement.unlockSpell(spell);
             }
+            game.save();
         }
         this.computePaths();
     }
@@ -572,10 +579,7 @@ class RewardTooltip {
 
 class Equipement {
     constructor() {
-        this.spells = [];
-        for (let id of Object.keys(allSpells)) {
-            this.spells.push(allSpells[id]);
-        }
+        this.spells = [allSpells.basicAttack];
     }
     unlockSpell(spell) {
         if (this.spells.find(s => s.id == spell.id)) {
@@ -583,12 +587,12 @@ class Equipement {
         }
         this.spells.push(spell);
     }
-    getWorldMsg(){
+    getWorldMsg() {
         return {
             spells: this.spells.map(s => s.id),
         };
     }
-    refreshWorldFromMsg(msg){
+    refreshWorldFromMsg(msg) {
         this.spells = msg.spells.map(id => allSpells[id]);
     }
 }

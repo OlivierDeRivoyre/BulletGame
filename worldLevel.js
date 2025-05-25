@@ -266,10 +266,9 @@ class ActionBar {
         this.player = player;
         this.worldLevel = worldLevel;
         this.spells = new Array(ActionBar.MaxSpells);
-        this.basicAttack = allSpells.basicAttack;
         this.spells[0] = allSpells.basicAttack;
-        this.spells[1] = allSpells.shotgun;
-        this.spells[2] = allSpells.healRaySpell;
+        this.spells[1] = null;
+        this.spells[2] = null;
         this.width = 104;
         this.height = 60;
         this.topX = 4;//Math.floor((CanvasWidth - this.width) / 2);
@@ -284,8 +283,23 @@ class ActionBar {
         this.mana = this.maxMana;
         this.regenMana = 5;
     }
+    startLevel(equipement) {
+        const self = this;
+        function set(index, location) {
+            if (self.spells[index]) {
+                return;
+            }
+            self.spells[index] = equipement.spells.find(s => s.description.location == location);
+        }
+        set(0, "Mouse 1");
+        set(1, "Mouse 2");
+        set(2, "Space");
+    }
     tryTriggerSpell(spellIndex) {
         const spell = this.spells[spellIndex];
+        if(!spell){
+            return;
+        }
         if (spell.lastAttackTick && tickNumber < spell.lastAttackTick + spell.cooldown * 30) {
             return false;
         }
@@ -772,6 +786,7 @@ class WorldLevel {
         this.updates = [];
     }
     startLevel(levelContent) {
+        this.deathTimer = false;
         this.levelContent = levelContent;
         this.map = this.levelContent.map;
         this.mobs = this.levelContent.mobs;
@@ -787,6 +802,7 @@ class WorldLevel {
         if (debug) {
             this.exitCell = new ExitCell(0, 0);
         }
+        this.actionBar.startLevel(game.equipement);
     }
     addProjectile(anim) {
         this.projectiles.push(anim);
@@ -941,6 +957,7 @@ class WorldLevel {
     }
     getWorldMsg() {
         return {
+            levelId: this.levelContent.id,
             players: this.players.map(p => ({
                 id: p.id,
                 x: p.x,
@@ -953,7 +970,8 @@ class WorldLevel {
         }
     }
     refreshWorldFromMsg(msg) {
-        this.startLevel(this.levelContent);
+        const levelContent = LevelContent.getLevelContent(msg.levelId);
+        this.startLevel(levelContent);
         for (let i = 0; i < this.players.length; i++) {
             const current = this.players[i]
             const saved = msg.players[i];

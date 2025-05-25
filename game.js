@@ -139,6 +139,7 @@ class Game {
         }
     }
     refreshWorldFromMsg(msg) {
+        tickNumber = msg.tickNumber;
         this.worldMap.refreshWorldFromMsg(msg.worldMap);
         this.worldLevel.refreshWorldFromMsg(msg.worldLevel);
         this.equipement.refreshWorldFromMsg(msg.equipement);
@@ -147,6 +148,25 @@ class Game {
         } else {
             this.currentView = this.worldLevel;
         }
+    }    
+    save() {
+        const msg = this.getWorldMsg();
+        msg.saveVersion = 1.0;
+        localStorage.setItem("save", JSON.stringify(msg));
+    }
+    load() {
+        const json = localStorage.getItem("save");
+        if(!json){
+            return;
+        }
+        const msg = JSON.parse(json);
+        if (msg.saveVersion != 1.0) {
+            console.log("Old save version: " + msg.saveVersion);
+            return;
+        }
+        msg.currentView = 'map';
+        this.refreshWorldFromMsg(msg);
+        this.worldMap.movePlayerToStartLocation();
     }
 }
 let game = null;
