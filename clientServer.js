@@ -144,8 +144,12 @@ class Server {
     onReceiveMsg(msg) {
         if (msg.t == 'updates') {
             const response = game.onUpdates(msg.updates);
-            if(response && response.length > 0){
-                this.broadcastAll({ t: 'updates', updates: response});
+            if(response){
+                if(response.t){
+                    this.broadcastAll({ t: 'updates', updates: [response]});
+                } else if(response.length > 0){
+                    this.broadcastAll({ t: 'updates', updates: response});
+                }
             }
         }
     }
