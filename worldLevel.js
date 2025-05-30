@@ -592,6 +592,7 @@ class Mob {
     }
     getMsg() {
         return {
+            t: 'mobStatus',
             id: this.id,
             x: this.x,
             y: this.y,
@@ -846,7 +847,7 @@ class WorldLevel {
                 this.players[m.id].onMessage(m);
             } else if (m.t === 'playerCastSpell') {
                 this.actionBar.onMessage(m);
-            } else if (m.t === 'mobHit') {
+            } else if (m.t === 'mobHit' || m.t === 'mobStatus') {
                 this.mobs[m.id].refreshFromMsg(m);
             } else if (m.t == 'exitLevelRequest') {
                 if (this.isServer && this.exitCell) {
