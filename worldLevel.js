@@ -495,6 +495,7 @@ class Mob {
         this.lookLeft = false;
         this.createExitCell = false;
         this.seed = 0;
+        this.lastSync = -999;
     }
     init(id, worldLevel, mobSeed) {
         this.id = id;
@@ -506,6 +507,10 @@ class Mob {
         return { x: this.x + this.sprite.tWidth, y: this.y + this.sprite.tHeight };
     }
     update() {
+        if (this.worldLevel.isServer && this.lastSync + 30 > tickNumber) {
+            this.lastSync = tickNumber;
+            this.worldLevel.updates.push(this.getMsg());
+        }
         for (let i = this.buffs.length - 1; i >= 0; i--) {
             if (tickNumber > this.buffs[i].endTick) {
                 this.buffs.splice(i, 1);
@@ -571,12 +576,8 @@ class Mob {
             this.worldLevel.exitCell = new ExitCell(this.initialX, this.initialY);
         }
     }
-    onHeal(heal) {        
-        if (!this.worldLevel.isServer) {
-            return;
-        }
+    onHeal(heal) {
         this.life = Math.min(this.maxLife, this.life + heal);
-        this.worldLevel.updates.push(this.getMsg());
     }
     addBuff(buff, fromCharacter) {
         if (!buff.endTick || buff.endTick <= 0) {
