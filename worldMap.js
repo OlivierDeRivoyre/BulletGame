@@ -110,7 +110,7 @@ class WorldMap {
         pushMonster(0, 2, 0, 'gobelin1');// gain shotgun
         pushMonster(15, 1, 2, 'snail1');// gain shield
         pushMonster(12, 2, 3, 'angel1');// gain bow
-        pushMonster(2, 6, 1, '');// Need heal
+        pushMonster(2, 6, 1, 'smallDevil1');// Need heal
 
         // pushMonster(0, 6, 0);
         //pushMonster(3, 6, 2);

@@ -580,7 +580,7 @@ class Mob {
         this.life = Math.min(this.maxLife, this.life + heal);
     }
     addBuff(buff, fromCharacter) {
-        if (!buff.endTick || buff.endTick <= 0) {
+        if (!buff.endTick || buff.endTick <= 0) { 
             buff.endTick = tickNumber + buff.duration * 30;
         }
         for (let i = 0; i < this.buffs.length; i++) {

@@ -77,7 +77,7 @@ class LevelContent {
         const map = LevelContent.createLevelBackground(18, 8);
         const mobs = [];
         mobs.push(LevelContent.createMobSnailAt({ i: 16, j: 3 }));
-        const levelDescription = new LevelDescription('Snail', allSpells.protectSpell, ['A single strong boss']);
+        const levelDescription = new LevelDescription('Snail', allSpells.protectSpell, ['A single strong snail']);
         return new LevelContent(map, mobs, levelDescription);
     }
 
@@ -121,7 +121,6 @@ class LevelContent {
         mob.speed = 3;
         return mob;
     }
-
     static getGobelinSorcerer1() {
         const map = LevelContent.createLevelBackground(16, 10);
         const mobs = [];
@@ -133,12 +132,32 @@ class LevelContent {
         const level = new LevelContent(map, mobs, levelDescription);
         return level;
     }
+    static createMobSmallDevilAt(cell) {
+        const spell = MobSpells.smallDevilAttack();
+        spell.projectile.damage = 15;
+        const mob = new Mob(
+            getDungeonTileSetVilainSprite(2, 4),
+            new AggroMobBrain(),
+            spell,
+            cell.i * 64, cell.j * 64);        
+        mob.life = mob.maxLife = 300;
+        return mob;
+    }
+    static getSmallDevil1() {
+        const map = LevelContent.createLevelBackground(10, 8);
+        const mobs = [];        
+        mobs.push(LevelContent.createMobSmallDevilAt({ i: 8, j: 4 }));
+        const levelDescription = new LevelDescription('Small Devil', allSpells.rootingProjectile, ['Be ready for this boss']);
+        const level = new LevelContent(map, mobs, levelDescription);
+        return level;
+    }
     static internalGetLevelContent(levelId) {
         switch (levelId) {
             case 'gobelinSorcerer1': return LevelContent.getGobelinSorcerer1();
             case 'gobelin1': return LevelContent.getGobelin1("Gobelins");
             case 'snail1': return LevelContent.getSnail1();
             case 'angel1': return LevelContent.getAngel1();
+            case 'smallDevil1': return LevelContent.getSmallDevil1();
         }
         return LevelContent.getGobelin1(levelId);
     }

@@ -58,6 +58,20 @@ class CrossDiagPattern {
         }
     }
 }
+class CircularPattern {
+    trigger(projectile, mob, target, worldLevel) {
+        const center = mob.getCenterCoord();
+        const numberOfBullets = 16;
+        for (let index = 0; index < numberOfBullets; index++) {
+            const angus = Math.PI * 2 * index / numberOfBullets;
+            const target = { x: center.x + 100 * Math.cos(angus), y: center.y + 100 * Math.sin(angus) };
+            const anim = new ProjectileAnim(projectile, center, target, mob);
+            anim.targerPlayers = true;
+            anim.targerMobs = false;
+            worldLevel.addProjectile(anim, mob);
+        }
+    }
+}
 
 class MobRayHealSpell {
     constructor() {
@@ -71,7 +85,7 @@ class MobRayHealSpell {
         this.radius = 4;
         this.healPerSecond = 30;
     }
-    checkHit(){
+    checkHit() {
 
     }
     trigger(mob, targetMob, worldLevel) {
@@ -84,10 +98,10 @@ class MobRayHealSpell {
         if (tickNumber % 10 == 0 && this.targetMob && this.targetMob.life > 0) {
             this.targetMob.onHeal(Math.ceil(this.healPerSecond * 10 / 30));
         }
-        return tickNumber <this.tickEnd && this.fromMob.life > 0;
+        return tickNumber < this.tickEnd && this.fromMob.life > 0;
     }
     paint(camera) {
-        if(!this.targetMob){
+        if (!this.targetMob) {
             return;
         }
         const from = this.fromMob.getCenterCoord();
@@ -114,6 +128,23 @@ class MobSpells {
         projectile.speed = 5;
         projectile.range = 7;
         const spell = new MobPatternAttack(projectile, [new CrossPattern(), new CrossDiagPattern()]);
+        spell.sound = sounds.lazerLow1;
+        return spell;
+    }
+    static smallDevilAttack() {
+        const projectile = new BulletProjectile();
+        projectile.color = 'red';
+        projectile.speed = 5;
+        projectile.range = 7;
+        const spell = new MobPatternAttack(projectile, [
+            new CrossPattern(),
+            new CrossDiagPattern(),
+            new CrossPattern(),
+            new CrossDiagPattern(),
+            new CrossPattern(), 
+            new CrossDiagPattern(),
+            new CircularPattern()
+        ]);
         spell.sound = sounds.lazerLow1;
         return spell;
     }
