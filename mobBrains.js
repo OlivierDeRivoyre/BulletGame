@@ -176,19 +176,28 @@ class SupportMobBrain {
     init(mob, worldLevel) {
         this.mob = mob;
         this.worldLevel = worldLevel;
-        this.healRange = 5;
+        this.healRange = this.mob.spell.radius;
     }
     update() {
         if (tickNumber < this.mob.idleUntilTick) {
             return;
         }
-        FearfullMobBrain.moveMob(this.mob, this.worldLevel, SupportMobBrain.beAroundTribeScore);
         if (this.mob.targetPlayer == null) {
             SupportMobBrain.PropagateAggro(this.worldLevel, this.mob);
         }
+        if (this.targetCoord == null) {
+            const toSupport = this.worldLevel.mobs.find(m => m.id != this.mob.id
+                && m.life < m.maxLife / 2
+                && distanceSquare(m, this.mob) < square(this.healRange * 64));
+            if (toSupport) {
+                this.mob.spell.trigger(this.mob, toSupport, this.worldLevel);
+                this.mob.idleUntilTick = tickNumber + this.mob.spell.duration;
+            }
+        }
+        FearfullMobBrain.moveMob(this.mob, this.worldLevel, SupportMobBrain.beAroundTribeScore);
+
     }
     static PropagateAggro(worldLevel, mob) {
-       
         const aggroMob = worldLevel.mobs.find(m => m.life > 0 && m.targetPlayer != null);
         if (!aggroMob) {
             return;
@@ -214,7 +223,7 @@ class SupportMobBrain {
         return score;
     }
     onHit() {
-         if (this.mob.targetPlayer == null) {
+        if (this.mob.targetPlayer == null) {
             this.mob.targetPlayer = this.worldLevel.findNearestPlayer(this.mob);
             SupportMobBrain.PropagateAggro(this.worldLevel, this.mob);
         }

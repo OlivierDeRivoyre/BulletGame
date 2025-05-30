@@ -349,6 +349,30 @@ class HealRaySpell {
         return new HealRayEffect(player, mouseCoord, worldLevel);
     }
 }
+class RaySprite {
+    constructor() {
+        this.raySpriteBegin = new SimpleSprite(bulletTileSet, 488, 6, 16, 16);
+        this.raySprite = new SimpleSprite(bulletTileSet, 488, 16, 16, 16);
+        this.raySpriteEnd = new SimpleSprite(bulletTileSet, 488, 54, 16, 16);
+        this.raySpriteHit = new DoubleSprite(bulletTileSet, 112, 96, 16, 16);
+    }
+    paint(camera, startCoord, angus, radius, hitDistance) {        
+        ctx.save();
+        ctx.translate(camera.toCanvasX(startCoord.x), camera.toCanvasY(startCoord.y));
+        ctx.rotate(angus - Math.PI / 2);
+        this.raySpriteBegin.paint(0, 0);
+        let heigth = radius - 32;
+        if (hitDistance) {
+            this.raySpriteHit.paintScale(-20, hitDistance - 20, 64, 64, tickNumber % 10 < 5)
+            heigth = hitDistance - 32;
+        }
+        this.raySprite.paintScale(0, 16, 16, heigth);
+        if (!hitDistance) {
+            this.raySpriteEnd.paint(0, radius - 16);
+        }
+        ctx.restore();
+    }
+}
 class HealRayEffect {
     constructor(player, mouseCoord, worldLevel) {
         this.player = player;
@@ -364,10 +388,7 @@ class HealRayEffect {
         this.manaPerSecond = 10;
         this.healPerSecond = 10;
         this.allowPlayerMove = false;
-        this.raySpriteBegin = new SimpleSprite(bulletTileSet, 488, 6, 16, 16);
-        this.raySprite = new SimpleSprite(bulletTileSet, 488, 16, 16, 16);
-        this.raySpriteEnd = new SimpleSprite(bulletTileSet, 488, 54, 16, 16);
-        this.raySpriteHit = new DoubleSprite(bulletTileSet, 112, 96, 16, 16);
+        this.raySprite = new RaySprite();
         this.sound = sounds.humHeal();
         this.sound.play();
     }
@@ -416,22 +437,7 @@ class HealRayEffect {
     }
     paint(camera) {
         const startCoord = this.player.getCenterCoord();
-
-        ctx.save();
-        ctx.translate(camera.toCanvasX(startCoord.x), camera.toCanvasY(startCoord.y));
-        ctx.rotate(this.angus - Math.PI / 2);
-        this.raySpriteBegin.paint(0, 0);
-        let heigth = this.radius - 32;
-        if (this.hitDistance) {
-            this.raySpriteHit.paintScale(-20, this.hitDistance - 20, 64, 64, tickNumber % 10 < 5)
-            heigth = this.hitDistance - 32;
-        }
-        this.raySprite.paintScale(0, 16, 16, heigth);
-        if (!this.hitDistance) {
-            this.raySpriteEnd.paint(0, this.radius - 16);
-        }
-        ctx.restore();
-
+        this.raySprite.paint(camera, startCoord, this.angus, this.radius, this.hitDistance);
     }
     getMsg() {
         return { spell: 'healRay', angus: this.angus, targetAngus: this.targetAngus };

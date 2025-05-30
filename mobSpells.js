@@ -59,6 +59,46 @@ class CrossDiagPattern {
     }
 }
 
+class MobRayHealSpell {
+    constructor() {
+        this.raySprite = new RaySprite();
+        this.targetMob = null;
+        this.targerPlayers = false;
+        this.targerMobs = false;
+        this.zIndex = 10;
+        this.tickEnd = -999;
+        this.duration = 64;
+        this.radius = 4;
+        this.healPerSecond = 30;
+    }
+    checkHit(){
+
+    }
+    trigger(mob, targetMob, worldLevel) {
+        this.fromMob = mob;
+        this.targetMob = targetMob;
+        this.tickEnd = tickNumber + this.duration;
+        worldLevel.addProjectile(this);
+    }
+    update(worldLevel) {
+        if (tickNumber % 10 == 0 && this.targetMob && this.targetMob.life > 0) {
+            this.targetMob.onHeal(Math.ceil(this.healPerSecond * 10 / 30));
+        }
+        return tickNumber <this.tickEnd && this.fromMob.life > 0;
+    }
+    paint(camera) {
+        if(!this.targetMob){
+            return;
+        }
+        const from = this.fromMob.getCenterCoord();
+        const to = this.targetMob.getCenterCoord();
+        const angus = Math.atan2(to.y - from.y, to.x - from.x);
+        const distance = computeDistance(from, to);
+        this.raySprite.paint(camera, from, angus, this.radius * 64, distance);
+    }
+
+}
+
 class MobSpells {
     static basicAttack() {
         const projectile = new BulletProjectile();
@@ -76,5 +116,8 @@ class MobSpells {
         const spell = new MobPatternAttack(projectile, [new CrossPattern(), new CrossDiagPattern()]);
         spell.sound = sounds.lazerLow1;
         return spell;
+    }
+    static rayHeal() {
+        return new MobRayHealSpell();
     }
 }

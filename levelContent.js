@@ -112,8 +112,7 @@ class LevelContent {
         return level;
     }
     static createMobGobelinSorcererAt(cell) {
-        const spell = MobSpells.crossAttack();
-        spell.projectile.damage = 3;
+        const spell = MobSpells.rayHeal();        
         const mob = new Mob(
             getDungeonTileSetVilainSprite(1, 10),
             new SupportMobBrain(),

@@ -173,7 +173,7 @@ class Player {
             if (buff.paintFunc) {
                 buff.paintFunc(this, camera);
             }
-        } 
+        }
         this.sprite.paint(canvasX, canvasY, (tickNumber % 16) < 8, this.lookLeft);
         this.paintLifebar(canvasX, canvasY);
     }
@@ -571,7 +571,12 @@ class Mob {
             this.worldLevel.exitCell = new ExitCell(this.initialX, this.initialY);
         }
     }
-    onHeal(heal, worldLevel, projectile, fromCharacter) {
+    onHeal(heal) {        
+        if (!this.worldLevel.isServer) {
+            return;
+        }
+        this.life = Math.min(this.maxLife, this.life + heal);
+        this.worldLevel.updates.push(this.getMsg());
     }
     addBuff(buff, fromCharacter) {
         if (!buff.endTick || buff.endTick <= 0) {
@@ -889,7 +894,7 @@ class WorldLevel {
         }
         for (let i = 0; i < this.mobs.length; i++) {
             this.mobs[i].refreshFromMsg(msg.mobs[i]);
-        }        
+        }
     }
 
 }
