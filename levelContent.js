@@ -25,7 +25,7 @@ class LevelContent {
         }
         return new LevelBackground(borderCell, cells);
     }
-    static createMob1At(cell) {
+    static createMobGobelinAt(cell) {
         const mob = new Mob(
             getDungeonTileSetVilainSprite(0, 12),
             new AggroMobBrain(),
@@ -36,25 +36,25 @@ class LevelContent {
     static getGobelin1(levelId) {
         const map = LevelContent.createLevelBackground(30, 10);
         const mobs = [];
-        mobs.push(LevelContent.createMob1At({ i: 1, j: 1 }));
-        mobs.push(LevelContent.createMob1At({ i: 5, j: 4 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 1, j: 1 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 5, j: 4 }));
 
-        mobs.push(LevelContent.createMob1At({ i: 12, j: 2 }));
-        mobs.push(LevelContent.createMob1At({ i: 12, j: 4 }));
-        mobs.push(LevelContent.createMob1At({ i: 12, j: 6 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 12, j: 2 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 12, j: 4 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 12, j: 6 }));
 
-        mobs.push(LevelContent.createMob1At({ i: 22, j: 2 }));
-        mobs.push(LevelContent.createMob1At({ i: 22, j: 4 }));
-        mobs.push(LevelContent.createMob1At({ i: 22, j: 6 }));
-        mobs.push(LevelContent.createMob1At({ i: 24, j: 3 }));
-        mobs.push(LevelContent.createMob1At({ i: 24, j: 5 }));
-        mobs.push(LevelContent.createMob1At({ i: 24, j: 7 }));
-        mobs.push(LevelContent.createMob1At({ i: 26, j: 3 }));
-        mobs.push(LevelContent.createMob1At({ i: 26, j: 5 }));
-        mobs.push(LevelContent.createMob1At({ i: 26, j: 7 }));
-        mobs.push(LevelContent.createMob1At({ i: 28, j: 3 }));
-        mobs.push(LevelContent.createMob1At({ i: 28, j: 5 }));
-        mobs.push(LevelContent.createMob1At({ i: 28, j: 7 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 22, j: 2 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 22, j: 4 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 22, j: 6 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 24, j: 3 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 24, j: 5 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 24, j: 7 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 26, j: 3 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 26, j: 5 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 26, j: 7 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 28, j: 3 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 28, j: 5 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 28, j: 7 }));
 
         const levelDescription = new LevelDescription(levelId, allSpells.shotgun, ['A pack of mobs']);
         return new LevelContent(map, mobs, levelDescription);
@@ -111,10 +111,27 @@ class LevelContent {
         level.startingPosition = [{ i: 1, j: 4 }, { i: 2, j: 4 }]
         return level;
     }
+    static createMobGobelinSorcererAt(cell) {
+        const spell = MobSpells.crossAttack();
+        spell.projectile.damage = 3;
+        const mob = new Mob(
+            getDungeonTileSetVilainSprite(1, 10),
+            new SupportMobBrain(),
+            spell,
+            cell.i * 64, cell.j * 64);
+        mob.speed = 3;
+        return mob;
+    }
+
     static getGobelinSorcerer1() {
-        const level = LevelContent.getGobelin1("Pack Mobs");
+        const map = LevelContent.createLevelBackground(16, 10);
+        const mobs = [];
+        mobs.push(LevelContent.createMobGobelinAt({ i: 10, j: 2 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 9, j: 3 }));
+        mobs.push(LevelContent.createMobGobelinAt({ i: 10, j: 4 }));
+        mobs.push(LevelContent.createMobGobelinSorcererAt({ i: 10, j: 3 }));
         const levelDescription = new LevelDescription('Gobelin tribe', allSpells.healRaySpell, ['Gobelins with their', 'sorcerer']);
-        level.levelDescription = levelDescription;
+        const level = new LevelContent(map, mobs, levelDescription);
         return level;
     }
     static internalGetLevelContent(levelId) {
