@@ -231,7 +231,7 @@ class Player {
         }
         for (let i = 0; i < this.buffs.length; i++) {
             if (this.buffs[i].id == BuffId.shield) {
-                this.buffs.splice(i, 1);
+                //this.buffs.splice(i, 1);
                 sounds.bubble.play();
                 return;
             }
